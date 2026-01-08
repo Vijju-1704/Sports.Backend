@@ -1,8 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 using Sports.Application.DTOs.Games;
 using Sports.Application.Interfaces;
+using Sports.Domain.Enums;
+using System.Security.Claims;
 
 namespace Sports.Api.Controllers;
 
@@ -101,5 +102,18 @@ public class GamesController : ControllerBase
         if (!result) return BadRequest("Unable to cancel game (Not Authorized or Not Found)");
 
         return Ok(new { message = "Game cancelled" });
+    }
+
+    [HttpPost("{id}/status")]
+    public async Task<IActionResult> UpdateGameStatus(int id, [FromBody] UpdateGameStatusDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var status = Enum.Parse<GameStatus>(dto.Status);
+        var result = await _gameService.UpdateGameStatusAsync(id, userId, status);
+        if (!result) return BadRequest("Unable to update game status");
+
+        return Ok(new { message = "Game status updated" });
     }
 }

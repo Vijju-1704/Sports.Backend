@@ -1,9 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using Sports.Domain.Enums;
-
 namespace Sports.Application.DTOs.Games;
 
-//  FIXED: Cleaned up duplicate/unused properties
 public class GameDto
 {
     public int GameId { get; set; }
@@ -15,13 +12,15 @@ public class GameDto
     public int VenueId { get; set; } 
     public DateTime DateTime { get; set; }
     public int DurationMinutes { get; set; }
-    public string Status { get; set; } = string.Empty; // Keep as string for display
+    public string Status { get; set; } = string.Empty; 
     public int PlayerCount { get; set; }
     public int MaxPlayers { get; set; }
     public int MinPlayers { get; set; } 
     public decimal? CostPerPerson { get; set; }
     public string HostName { get; set; } = string.Empty;
     public string HostUserId { get; set; } = string.Empty;
+    public bool RequireApproval { get; set; }
+    public int PendingRequestsCount { get; set; }
 }
 
 public class CreateGameDto
@@ -49,17 +48,18 @@ public class CreateGameDto
 
     public decimal? CostPerPerson { get; set; }
     public string? EquipmentNeeded { get; set; }
+    public bool RequireApproval { get; set; } = false;
 }
 
-// ✅ IMPROVED: Added participant list
 public class GameDetailDto : GameDto
 {
     public string? EquipmentNeeded { get; set; }
     public string? Description { get; set; }
     public List<ParticipantDto> Participants { get; set; } = new();
+    public List<JoinRequestDto> PendingRequests { get; set; } = new();
+    public bool CurrentUserHasRequest { get; set; }
 }
 
-// ✅ NEW: Participant DTO for displaying in details
 public class ParticipantDto
 {
     public string UserId { get; set; } = string.Empty;
@@ -105,4 +105,10 @@ public class CreateVenueDto
     public string City { get; set; } = string.Empty;
     public string? MapsUrl { get; set; }
     public string? Facilities { get; set; }
+}
+
+
+public class UpdateGameStatusDto
+{
+    public string Status { get; set; } = string.Empty; // "InProgress", "Completed", "Cancelled"
 }

@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-
 namespace Sports.Domain.Entities;
 
 public class Sport

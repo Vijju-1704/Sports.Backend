@@ -6,38 +6,38 @@ namespace Sports.Infrastructure.Repositories;
 
 public class UnitOfWork : IUnitOfWork
 {
-    private readonly ApplicationDbContext _context;
-    private Hashtable? _repositories;
+    private readonly ApplicationDbContext DbContext;
+    private Hashtable? Repositories;
 
     public UnitOfWork(ApplicationDbContext context)
     {
-        _context = context;
+        DbContext = context;
     }
 
     public IGenericRepository<T> Repository<T>() where T : class
     {
-        if (_repositories == null)
-            _repositories = new Hashtable();
+        if (Repositories == null)
+            Repositories = new Hashtable();
 
         var type = typeof(T).Name;
 
-        if (!_repositories.ContainsKey(type))
+        if (!Repositories.ContainsKey(type))
         {
             var repositoryType = typeof(GenericRepository<>);
-            var repositoryInstance = Activator.CreateInstance(repositoryType.MakeGenericType(typeof(T)), _context);
-            _repositories.Add(type, repositoryInstance);
+            var repositoryInstance = Activator.CreateInstance(repositoryType.MakeGenericType(typeof(T)), DbContext);
+            Repositories.Add(type, repositoryInstance);
         }
 
-        return (IGenericRepository<T>)_repositories[type]!;
+        return (IGenericRepository<T>)Repositories[type]!;
     }
 
     public async Task<int> SaveChangesAsync()
     {
-        return await _context.SaveChangesAsync();
+        return await DbContext.SaveChangesAsync();
     }
 
     public void Dispose()
     {
-        _context.Dispose();
+        DbContext.Dispose();
     }
 }

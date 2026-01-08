@@ -1,5 +1,4 @@
 using System.Linq.Expressions;
-
 namespace Sports.Domain.Interfaces;
 
 public interface IGenericRepository<T> where T : class

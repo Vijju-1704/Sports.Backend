@@ -73,11 +73,17 @@ builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepositor
 builder.Services.AddScoped<JwtTokenGenerator>();
 
 // 7. Application Services
+builder.Services.AddScoped<IJoinRequestService, JoinRequestService>();
+builder.Services.AddScoped<IUserProfileService, UserProfileService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IGameService, GameService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
-builder.Services.AddScoped<IAdminService, AdminService>(); // ✅ NEW
-builder.Services.AddScoped<IChatService, ChatService>(); // ✅ NEW
+builder.Services.AddScoped<IAdminService>(sp =>
+    new AdminService(
+        sp.GetRequiredService<IUnitOfWork>(),
+        sp.GetRequiredService<UserManager<ApplicationUser>>(),
+        sp.GetRequiredService<RoleManager<IdentityRole>>()
+    )); builder.Services.AddScoped<IChatService, ChatService>(); // ✅ NEW
 
 var app = builder.Build();
 

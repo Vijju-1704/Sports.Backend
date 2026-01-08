@@ -8,11 +8,11 @@ namespace Sports.Infrastructure.Identity;
 
 public class JwtTokenGenerator
 {
-    private readonly IConfiguration _configuration;
+    private readonly IConfiguration Configuration;
 
     public JwtTokenGenerator(IConfiguration configuration)
     {
-        _configuration = configuration;
+        Configuration = configuration;
     }
 
     public string GenerateToken(ApplicationUser user, IList<string> roles)
@@ -30,14 +30,14 @@ public class JwtTokenGenerator
             claims.Add(new Claim(ClaimTypes.Role, role));
         }
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtSettings:Secret"]!));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["JwtSettings:Secret"]!));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(
-            issuer: _configuration["JwtSettings:Issuer"],
-            audience: _configuration["JwtSettings:Audience"],
+            issuer: Configuration["JwtSettings:Issuer"],
+            audience: Configuration["JwtSettings:Audience"],
             claims: claims,
-            expires: DateTime.Now.AddMinutes(double.Parse(_configuration["JwtSettings:ExpiryMinutes"]!)),
+            expires: DateTime.Now.AddMinutes(double.Parse(Configuration["JwtSettings:ExpiryMinutes"]!)),
             signingCredentials: creds
         );
 

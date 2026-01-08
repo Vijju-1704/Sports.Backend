@@ -7,42 +7,42 @@ namespace Sports.Infrastructure.Repositories;
 
 public class GenericRepository<T> : IGenericRepository<T> where T : class
 {
-    protected readonly ApplicationDbContext _context;
-    private readonly DbSet<T> _dbSet;
+    protected readonly ApplicationDbContext DbContext;
+    private readonly DbSet<T> DbSet;
 
     public GenericRepository(ApplicationDbContext context)
     {
-        _context = context;
-        _dbSet = _context.Set<T>();
+        DbContext = context;
+        DbSet = DbContext.Set<T>();
     }
 
     public async Task<T?> GetByIdAsync(int id)
     {
-        return await _dbSet.FindAsync(id);
+        return await DbSet.FindAsync(id);
     }
 
     public async Task<IEnumerable<T>> GetAllAsync()
     {
-        return await _dbSet.ToListAsync();
+        return await DbSet.ToListAsync();
     }
 
     public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> expression)
     {
-        return await _dbSet.Where(expression).ToListAsync();
+        return await DbSet.Where(expression).ToListAsync();
     }
 
     public async Task AddAsync(T entity)
     {
-        await _dbSet.AddAsync(entity);
+        await DbSet.AddAsync(entity);
     }
 
     public void Remove(T entity)
     {
-        _dbSet.Remove(entity);
+        DbSet.Remove(entity);
     }
 
     public IQueryable<T> GetQueryable()
     {
-        return _dbSet.AsQueryable();
+        return DbSet.AsQueryable();
     }
 }

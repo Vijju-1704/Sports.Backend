@@ -13,20 +13,22 @@ public class GameService : IGameService
 {
     private readonly IUnitOfWork _uow;
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly IGenericRepository<Sport> _sportRepo;
-    private readonly IGenericRepository<Venue> _venueRepo;
     private readonly INotificationService _notificationService;
+    private readonly IJoinRequestService _joinRequestService;
 
-    public GameService(IUnitOfWork uow, UserManager<ApplicationUser> userManager, INotificationService notificationService)
+    public GameService(
+        IUnitOfWork uow,
+        UserManager<ApplicationUser> userManager,
+        INotificationService notificationService,
+        IJoinRequestService joinRequestService)
     {
         _uow = uow;
         _userManager = userManager;
         _notificationService = notificationService;
-        _sportRepo = _uow.Repository<Sport>();
-        _venueRepo = _uow.Repository<Venue>();
+        _joinRequestService = joinRequestService;
     }
 
-    // ✅ IMPROVED: Advanced search with filters
+    // Advanced search with filters
     public async Task<IEnumerable<GameDto>> GetAllGamesAsync(
         string? sport = null,
         DateTime? date = null,
@@ -97,20 +99,21 @@ public class GameService : IGameService
         return gameDtos;
     }
 
-    public async Task<GameDetailDto?> GetGameByIdAsync(int id)
+    public async Task<GameDetailDto?> GetGameByIdAsync(int id, string? currentUserId = null)
     {
         var game = await _uow.Repository<Game>()
             .GetQueryable()
             .Include(g => g.Sport)
             .Include(g => g.Venue)
             .Include(g => g.Participants)
+            .Include(g => g.JoinRequests)
             .FirstOrDefaultAsync(g => g.GameId == id);
 
         if (game == null) return null;
 
         var host = await _userManager.FindByIdAsync(game.HostUserId);
-
         var participants = new List<ParticipantDto>();
+
         foreach (var p in game.Participants)
         {
             var user = await _userManager.FindByIdAsync(p.UserId);
@@ -122,6 +125,21 @@ public class GameService : IGameService
                 JoinedAt = p.JoinedAt,
                 IsHost = p.UserId == game.HostUserId
             });
+        }
+
+        // Get pending requests (for host)
+        var pendingRequests = new List<JoinRequestDto>();
+        bool currentUserHasRequest = false;
+
+        if (game.RequireApproval)
+        {
+            var requests = await _joinRequestService.GetGameJoinRequestsAsync(id);
+            pendingRequests = requests.Where(r => r.Status == "Pending").ToList();
+
+            if (!string.IsNullOrEmpty(currentUserId))
+            {
+                currentUserHasRequest = pendingRequests.Any(r => r.UserId == currentUserId);
+            }
         }
 
         return new GameDetailDto
@@ -143,7 +161,11 @@ public class GameService : IGameService
             HostUserId = game.HostUserId,
             EquipmentNeeded = game.EquipmentNeeded,
             PlayerCount = game.Participants.Count,
-            Participants = participants
+            Participants = participants,
+            RequireApproval = game.RequireApproval,
+            PendingRequests = pendingRequests,
+            CurrentUserHasRequest = currentUserHasRequest,
+            PendingRequestsCount = pendingRequests.Count
         };
     }
 
@@ -166,12 +188,14 @@ public class GameService : IGameService
             MaxPlayers = createDto.MaxPlayers,
             CostPerPerson = createDto.CostPerPerson,
             EquipmentNeeded = createDto.EquipmentNeeded,
+            RequireApproval = createDto.RequireApproval, // ✅ NEW
             Status = GameStatus.Open
         };
 
         await _uow.Repository<Game>().AddAsync(game);
         await _uow.SaveChangesAsync();
 
+        // Host auto-joins
         var participant = new GameParticipant
         {
             GameId = game.GameId,
@@ -200,8 +224,41 @@ public class GameService : IGameService
             Status = result.Status,
             CostPerPerson = result.CostPerPerson,
             HostName = result.HostName,
-            HostUserId = result.HostUserId
+            HostUserId = result.HostUserId,
+            RequireApproval = result.RequireApproval
         };
+    }
+
+    public async Task<bool> UpdateGameStatusAsync(int gameId, string userId, GameStatus status)
+    {
+        var game = await _uow.Repository<Game>().GetByIdAsync(gameId);
+        if (game == null) return false;
+        if (game.HostUserId != userId) return false;
+
+        game.Status = status;
+        await _uow.SaveChangesAsync();
+
+        // Notify participants
+        var participants = await _uow.Repository<GameParticipant>()
+            .FindAsync(p => p.GameId == gameId && p.UserId != userId);
+
+        string statusMessage = status switch
+        {
+            GameStatus.InProgress => "has started",
+            GameStatus.Completed => "has been completed",
+            _ => $"status changed to {status}"
+        };
+
+        foreach (var p in participants)
+        {
+            await _notificationService.CreateNotificationAsync(
+                p.UserId,
+                $"Game '{game.Title}' {statusMessage}",
+                NotificationType.Info
+            );
+        }
+
+        return true;
     }
 
     public async Task<bool> JoinGameAsync(int gameId, string userId)
@@ -242,7 +299,7 @@ public class GameService : IGameService
         return true;
     }
 
-    // ✅ NEW: Leave Game Feature
+    //Leave Game Feature
     public async Task<bool> LeaveGameAsync(int gameId, string userId)
     {
         var game = await _uow.Repository<Game>()
@@ -344,4 +401,23 @@ public class GameService : IGameService
 
         return true;
     }
+
+    public async Task AutoCompleteGamesAsync()
+    {
+        var cutoffTime = DateTime.UtcNow.AddHours(-3); // Complete games 3 hours after end time
+
+        var gamesToComplete = await _uow.Repository<Game>()
+            .GetQueryable()
+            .Where(g => g.Status == GameStatus.InProgress &&
+                       g.DateTime.AddMinutes(g.DurationMinutes) < cutoffTime)
+            .ToListAsync();
+
+        foreach (var game in gamesToComplete)
+        {
+            game.Status = GameStatus.Completed;
+        }
+
+        await _uow.SaveChangesAsync();
+    }
+
 }

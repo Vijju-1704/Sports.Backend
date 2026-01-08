@@ -1,8 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Sports.Domain.Entities;
-using Sports.Domain.Interfaces;
+using Sports.Application.Interfaces;
+using Sports.Application.DTOs.UserProfile;
 
 namespace Sports.Api.Controllers;
 
@@ -11,58 +11,96 @@ namespace Sports.Api.Controllers;
 [Authorize]
 public class UserProfileController : ControllerBase
 {
-    private readonly IUnitOfWork _uow;
-    private readonly IGenericRepository<UserSportProfile> _profileRepo;
-    private readonly IGenericRepository<Game> _gameRepo;
-    private readonly IGenericRepository<GameParticipant> _participantRepo;
+    private readonly IUserProfileService _userProfileService;
 
-    public UserProfileController(IUnitOfWork uow)
+    public UserProfileController(IUserProfileService userProfileService)
     {
-        _uow = uow;
-        _profileRepo = uow.Repository<UserSportProfile>();
-        _gameRepo = uow.Repository<Game>();
-        _participantRepo = uow.Repository<GameParticipant>();
+        _userProfileService = userProfileService;
     }
 
     [HttpGet("me")]
-    public async Task<IActionResult> GetMyProfile()
+    public async Task<ActionResult<UserProfileDto>> GetMyProfile()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        // Get Sport Profiles (Skills)
-        var sportProfiles = await _profileRepo.FindAsync(p => p.UserId == userId);
+        var profile = await _userProfileService.GetUserProfileAsync(userId);
+        if (profile == null) return NotFound();
 
-        // Get Stats (Games Hosted, Games Joined)
-        var hostedCount = (await _gameRepo.FindAsync(g => g.HostUserId == userId)).Count();
-        var joinedCount = (await _participantRepo.FindAsync(p => p.UserId == userId)).Count();
-
-        return Ok(new 
-        { 
-            SportProfiles = sportProfiles,
-            Stats = new { Hosted = hostedCount, Joined = joinedCount }
-        });
+        return Ok(profile);
     }
 
-    [HttpPost("skills")]
-    public async Task<IActionResult> UpdateSkill([FromBody] UserSportProfile dto)
+    [HttpPut("me")]
+    public async Task<IActionResult> UpdateMyProfile([FromBody] UpdateUserProfileDto dto)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        var existing = (await _profileRepo.FindAsync(p => p.UserId == userId && p.SportId == dto.SportId)).FirstOrDefault();
-        if (existing != null)
+        var result = await _userProfileService.UpdateProfileAsync(userId, dto);
+        if (!result) return BadRequest(new { message = "Failed to update profile" });
+
+        return Ok(new { message = "Profile updated successfully" });
+    }
+
+    [HttpGet("{userId}")]
+    public async Task<ActionResult<UserProfileDto>> GetUserProfile(string userId)
+    {
+        var profile = await _userProfileService.GetUserProfileAsync(userId);
+        if (profile == null) return NotFound();
+
+        return Ok(profile);
+    }
+
+    // ========== SPORT PROFILES ==========
+
+    [HttpGet("me/sports")]
+    public async Task<ActionResult<IEnumerable<UserSportProfileDto>>> GetMySportProfiles()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var profiles = await _userProfileService.GetUserSportProfilesAsync(userId);
+        return Ok(profiles);
+    }
+
+    [HttpPost("me/sports")]
+    public async Task<ActionResult<UserSportProfileDto>> AddSportProfile([FromBody] CreateUserSportProfileDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        try
         {
-            existing.SkillLevel = dto.SkillLevel;
+            var profile = await _userProfileService.AddSportProfileAsync(userId, dto);
+            return Ok(profile);
         }
-        else
+        catch (Exception ex)
         {
-            dto.UserId = userId;
-             await _profileRepo.AddAsync(dto);
+            return BadRequest(new { message = ex.Message });
         }
-        
-        await _uow.SaveChangesAsync();
-        
-        return Ok(new { message = "Skill updated" });
+    }
+
+    [HttpPut("me/sports/{profileId}")]
+    public async Task<IActionResult> UpdateSportProfile(int profileId, [FromBody] CreateUserSportProfileDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var result = await _userProfileService.UpdateSportProfileAsync(userId, profileId, dto);
+        if (!result) return NotFound();
+
+        return Ok(new { message = "Sport profile updated" });
+    }
+
+    [HttpDelete("me/sports/{profileId}")]
+    public async Task<IActionResult> RemoveSportProfile(int profileId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var result = await _userProfileService.RemoveSportProfileAsync(userId, profileId);
+        if (!result) return NotFound();
+
+        return Ok(new { message = "Sport profile removed" });
     }
 }

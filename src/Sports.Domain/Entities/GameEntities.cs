@@ -8,34 +8,37 @@ public class Game
 {
     [Key]
     public int GameId { get; set; }
-    
+
     [Required]
     public string Title { get; set; } = string.Empty;
-    
+
     [ForeignKey("Sport")]
     public int SportId { get; set; }
     public Sport Sport { get; set; } = null!;
-    
+
     [ForeignKey("Venue")]
     public int VenueId { get; set; }
     public Venue Venue { get; set; } = null!;
 
-    public string HostUserId { get; set; } = string.Empty; // FK to AspNetUser
-    
+    public string HostUserId { get; set; } = string.Empty;
+
     public DateTime DateTime { get; set; }
     public int DurationMinutes { get; set; } = 60;
-    
+
     public int MinPlayers { get; set; }
     public int MaxPlayers { get; set; }
-    
-    [Column(TypeName = "decimal(18,2)")]
-    public decimal? CostPerPerson { get; set; } 
-    
-    public string? EquipmentNeeded { get; set; }
 
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal? CostPerPerson { get; set; }
+
+    public string? EquipmentNeeded { get; set; }
     public GameStatus Status { get; set; } = GameStatus.Open;
 
+    public bool RequireApproval { get; set; } = false;
+
     public ICollection<GameParticipant> Participants { get; set; } = new List<GameParticipant>();
+
+    public ICollection<JoinRequest> JoinRequests { get; set; } = new List<JoinRequest>();
 }
 
 public class GameParticipant
@@ -73,11 +76,18 @@ public class JoinRequest
 {
     [Key]
     public int RequestId { get; set; }
+
     public int GameId { get; set; }
+    [ForeignKey("GameId")]
+    public Game Game { get; set; } = null!;
+
     public string UserId { get; set; } = string.Empty;
+
     public string? Message { get; set; }
     public RequestStatus Status { get; set; } = RequestStatus.Pending;
     public DateTime RequestedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? RespondedAt { get; set; }
+    public string? ResponseMessage { get; set; }
 }
 
 public class Notification

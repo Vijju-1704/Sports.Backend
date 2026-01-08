@@ -8,18 +8,18 @@ using Sports.Infrastructure.Identity;
 
 public class ChatService : IChatService
 {
-    private readonly IUnitOfWork _uow;
-    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IUnitOfWork Uow;
+    private readonly UserManager<ApplicationUser> UserManager;
 
     public ChatService(IUnitOfWork uow, UserManager<ApplicationUser> userManager)
     {
-        _uow = uow;
-        _userManager = userManager;
+        Uow = uow;
+        UserManager = userManager;
     }
 
     public async Task<IEnumerable<ChatMessageDto>> GetGameMessagesAsync(int gameId, string currentUserId)
     {
-        var messages = await _uow.Repository<ChatMessage>()
+        var messages = await Uow.Repository<ChatMessage>()
             .GetQueryable()
             .Where(m => m.GameId == gameId)
             .OrderBy(m => m.Timestamp)
@@ -29,7 +29,7 @@ public class ChatService : IChatService
 
         foreach (var msg in messages)
         {
-            var sender = await _userManager.FindByIdAsync(msg.SenderUserId);
+            var sender = await UserManager.FindByIdAsync(msg.SenderUserId);
             messageDtos.Add(new ChatMessageDto
             {
                 MessageId = msg.MessageId,
@@ -48,7 +48,7 @@ public class ChatService : IChatService
     public async Task<ChatMessageDto> SendMessageAsync(int gameId, string userId, SendMessageDto dto)
     {
         // Verify user is a participant
-        var participant = await _uow.Repository<GameParticipant>()
+        var participant = await Uow.Repository<GameParticipant>()
             .FindAsync(p => p.GameId == gameId && p.UserId == userId);
 
         if (!participant.Any())
@@ -64,10 +64,10 @@ public class ChatService : IChatService
             Timestamp = DateTime.UtcNow
         };
 
-        await _uow.Repository<ChatMessage>().AddAsync(message);
-        await _uow.SaveChangesAsync();
+        await Uow.Repository<ChatMessage>().AddAsync(message);
+        await Uow.SaveChangesAsync();
 
-        var sender = await _userManager.FindByIdAsync(userId);
+        var sender = await UserManager.FindByIdAsync(userId);
 
         return new ChatMessageDto
         {
@@ -83,14 +83,14 @@ public class ChatService : IChatService
 
     public async Task<bool> DeleteMessageAsync(int messageId, string userId)
     {
-        var message = await _uow.Repository<ChatMessage>().GetByIdAsync(messageId);
+        var message = await Uow.Repository<ChatMessage>().GetByIdAsync(messageId);
         if (message == null) return false;
 
         // Only sender can delete their message
         if (message.SenderUserId != userId) return false;
 
-        _uow.Repository<ChatMessage>().Remove(message);
-        await _uow.SaveChangesAsync();
+        Uow.Repository<ChatMessage>().Remove(message);
+        await Uow.SaveChangesAsync();
         return true;
     }
 }

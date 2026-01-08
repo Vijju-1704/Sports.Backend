@@ -9,12 +9,12 @@ namespace Sports.Infrastructure.Services;
 
 public class AuthService : IAuthService
 {
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly SignInManager<ApplicationUser> _signInManager;
-    private readonly JwtTokenGenerator _jwtTokenGenerator;
-    private readonly IGenericRepository<EmployeeDirectory> _employeeRepo; // Direct repo access for check
-    private readonly IGenericRepository<UserEmployeeMap> _mapRepo;
-    private readonly IUnitOfWork _uow;
+    private readonly UserManager<ApplicationUser> UserManager;
+    private readonly SignInManager<ApplicationUser> SignInManager;
+    private readonly JwtTokenGenerator JwtTokenGenerator;
+    private readonly IGenericRepository<EmployeeDirectory> EmployeeRepo; // Direct repo access for check
+    private readonly IGenericRepository<UserEmployeeMap> MapRepo;
+    private readonly IUnitOfWork Uow;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
@@ -22,30 +22,30 @@ public class AuthService : IAuthService
         JwtTokenGenerator jwtTokenGenerator,
         IUnitOfWork uow)
     {
-        _userManager = userManager;
-        _signInManager = signInManager;
-        _jwtTokenGenerator = jwtTokenGenerator;
-        _uow = uow;
-        _employeeRepo = _uow.Repository<EmployeeDirectory>();
-        _mapRepo = _uow.Repository<UserEmployeeMap>();
+        UserManager = userManager;
+        SignInManager = signInManager;
+        JwtTokenGenerator = jwtTokenGenerator;
+        Uow = uow;
+        EmployeeRepo = Uow.Repository<EmployeeDirectory>();
+        MapRepo = Uow.Repository<UserEmployeeMap>();
     }
 
     public async Task<AuthResponseDto> LoginAsync(LoginDto loginDto)
     {
-        var user = await _userManager.FindByEmailAsync(loginDto.Email);
+        var user = await UserManager.FindByEmailAsync(loginDto.Email);
         if (user == null)
         {
             throw new Exception("Invalid Username or Password"); // In real app, use custom exception
         }
 
-        var result = await _signInManager.CheckPasswordSignInAsync(user, loginDto.Password, false);
+        var result = await SignInManager.CheckPasswordSignInAsync(user, loginDto.Password, false);
         if (!result.Succeeded)
         {
             throw new Exception("Invalid Username or Password");
         }
 
-        var roles = await _userManager.GetRolesAsync(user);
-        var token = _jwtTokenGenerator.GenerateToken(user, roles);
+        var roles = await UserManager.GetRolesAsync(user);
+        var token = JwtTokenGenerator.GenerateToken(user, roles);
 
         return new AuthResponseDto
         {
@@ -60,7 +60,7 @@ public class AuthService : IAuthService
     public async Task<AuthResponseDto> RegisterAsync(RegisterDto registerDto)
     {
         // 1. Validation: Check if user exists in Employee Directory
-        var employees = await _employeeRepo.FindAsync(e => e.Email == registerDto.Email && e.EmployeeCode == registerDto.EmployeeCode);
+        var employees = await EmployeeRepo.FindAsync(e => e.Email == registerDto.Email && e.EmployeeCode == registerDto.EmployeeCode);
         var employee = employees.FirstOrDefault();
 
         if (employee == null)
@@ -82,7 +82,7 @@ public class AuthService : IAuthService
             DateRegistered = DateTime.UtcNow
         };
 
-        var result = await _userManager.CreateAsync(user, registerDto.Password);
+        var result = await UserManager.CreateAsync(user, registerDto.Password);
         if (!result.Succeeded)
         {
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
@@ -90,19 +90,19 @@ public class AuthService : IAuthService
         }
 
         // 3. Link User to Employee
-        await _mapRepo.AddAsync(new UserEmployeeMap
+        await MapRepo.AddAsync(new UserEmployeeMap
         {
             UserId = user.Id,
             EmployeeId = employee.EmployeeId
         });
-        await _uow.SaveChangesAsync();
+        await Uow.SaveChangesAsync();
 
         // 4. Default Role
-        await _userManager.AddToRoleAsync(user, "User");
+        await UserManager.AddToRoleAsync(user, "User");
 
         // 5. Generate Token
         var roles = new List<string> { "User" };
-        var token = _jwtTokenGenerator.GenerateToken(user, roles);
+        var token = JwtTokenGenerator.GenerateToken(user, roles);
 
          return new AuthResponseDto
         {
