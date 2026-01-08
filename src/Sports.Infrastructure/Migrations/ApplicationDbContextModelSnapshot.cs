@@ -282,6 +282,9 @@ namespace Sports.Infrastructure.Migrations
                     b.Property<int>("MinPlayers")
                         .HasColumnType("int");
 
+                    b.Property<bool>("RequireApproval")
+                        .HasColumnType("bit");
+
                     b.Property<int>("SportId")
                         .HasColumnType("int");
 
@@ -349,6 +352,12 @@ namespace Sports.Infrastructure.Migrations
                     b.Property<DateTime>("RequestedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("RespondedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ResponseMessage")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
@@ -357,6 +366,8 @@ namespace Sports.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("RequestId");
+
+                    b.HasIndex("GameId");
 
                     b.ToTable("JoinRequests");
                 });
@@ -709,6 +720,17 @@ namespace Sports.Infrastructure.Migrations
                     b.Navigation("Game");
                 });
 
+            modelBuilder.Entity("Sports.Domain.Entities.JoinRequest", b =>
+                {
+                    b.HasOne("Sports.Domain.Entities.Game", "Game")
+                        .WithMany("JoinRequests")
+                        .HasForeignKey("GameId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Game");
+                });
+
             modelBuilder.Entity("Sports.Domain.Entities.UserEmployeeMap", b =>
                 {
                     b.HasOne("Sports.Domain.Entities.EmployeeDirectory", "Employee")
@@ -733,6 +755,8 @@ namespace Sports.Infrastructure.Migrations
 
             modelBuilder.Entity("Sports.Domain.Entities.Game", b =>
                 {
+                    b.Navigation("JoinRequests");
+
                     b.Navigation("Participants");
                 });
 #pragma warning restore 612, 618

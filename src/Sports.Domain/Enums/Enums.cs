@@ -12,9 +12,9 @@ public enum GameStatus
 {
     Open = 1,
     Full = 2,
-    Completed = 3,
-    Cancelled = 4,
-    InProgress = 5
+    InProgress = 3,
+    Completed = 4,
+    Cancelled = 5
 }
 
 public enum JoinStatus

@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Sports.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class Init : Migration
+    public partial class INITIAL : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -70,23 +70,6 @@ namespace Sports.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_EmployeeDirectory", x => x.EmployeeId);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "JoinRequests",
-                columns: table => new
-                {
-                    RequestId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    GameId = table.Column<int>(type: "int", nullable: false),
-                    UserId = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Message = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Status = table.Column<int>(type: "int", nullable: false),
-                    RequestedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_JoinRequests", x => x.RequestId);
                 });
 
             migrationBuilder.CreateTable(
@@ -303,7 +286,8 @@ namespace Sports.Infrastructure.Migrations
                     MaxPlayers = table.Column<int>(type: "int", nullable: false),
                     CostPerPerson = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
                     EquipmentNeeded = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Status = table.Column<int>(type: "int", nullable: false)
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    RequireApproval = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -360,6 +344,31 @@ namespace Sports.Infrastructure.Migrations
                     table.PrimaryKey("PK_GameParticipants", x => x.ParticipantId);
                     table.ForeignKey(
                         name: "FK_GameParticipants_Games_GameId",
+                        column: x => x.GameId,
+                        principalTable: "Games",
+                        principalColumn: "GameId",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "JoinRequests",
+                columns: table => new
+                {
+                    RequestId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    GameId = table.Column<int>(type: "int", nullable: false),
+                    UserId = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Message = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    RequestedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    RespondedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ResponseMessage = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_JoinRequests", x => x.RequestId);
+                    table.ForeignKey(
+                        name: "FK_JoinRequests_Games_GameId",
                         column: x => x.GameId,
                         principalTable: "Games",
                         principalColumn: "GameId",
@@ -454,6 +463,11 @@ namespace Sports.Infrastructure.Migrations
                 name: "IX_Games_VenueId",
                 table: "Games",
                 column: "VenueId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_JoinRequests_GameId",
+                table: "JoinRequests",
+                column: "GameId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_UserEmployeeMap_EmployeeId",
