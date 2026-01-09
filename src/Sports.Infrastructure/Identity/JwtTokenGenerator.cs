@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -25,9 +25,13 @@ public class JwtTokenGenerator
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
+        // ✅ CRITICAL FIX: Use "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+        // This is the standard ClaimTypes.Role that ASP.NET Core recognizes
         foreach (var role in roles)
         {
             claims.Add(new Claim(ClaimTypes.Role, role));
+            // Also add the short form for compatibility
+            claims.Add(new Claim("role", role));
         }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["JwtSettings:Secret"]!));
@@ -37,7 +41,7 @@ public class JwtTokenGenerator
             issuer: Configuration["JwtSettings:Issuer"],
             audience: Configuration["JwtSettings:Audience"],
             claims: claims,
-            expires: DateTime.Now.AddMinutes(double.Parse(Configuration["JwtSettings:ExpiryMinutes"]!)),
+            expires: DateTime.UtcNow.AddMinutes(double.Parse(Configuration["JwtSettings:ExpiryMinutes"]!)),
             signingCredentials: creds
         );
 

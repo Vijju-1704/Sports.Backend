@@ -32,7 +32,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
-// 3. JWT Authentication Configuration
+// 3. ✅ ENHANCED JWT Authentication Configuration
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -49,7 +49,28 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
         ValidAudience = builder.Configuration["JwtSettings:Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:Secret"]!))
+            Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:Secret"]!)),
+        ClockSkew = TimeSpan.Zero // ✅ Remove default 5 minute clock skew
+    };
+
+    // ✅ CRITICAL: Add logging for JWT authentication failures
+    options.Events = new JwtBearerEvents
+    {
+        OnAuthenticationFailed = context =>
+        {
+            Console.WriteLine($"JWT Authentication failed: {context.Exception.Message}");
+            return Task.CompletedTask;
+        },
+        OnTokenValidated = context =>
+        {
+            Console.WriteLine($"JWT Token validated for user: {context.Principal?.Identity?.Name}");
+            return Task.CompletedTask;
+        },
+        OnChallenge = context =>
+        {
+            Console.WriteLine($"JWT Challenge: {context.Error}, {context.ErrorDescription}");
+            return Task.CompletedTask;
+        }
     };
 });
 
@@ -58,10 +79,15 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowWebApp", policy =>
     {
-        policy.WithOrigins("https://localhost:7001", "http://localhost:5001")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+        policy.WithOrigins(
+                "https://localhost:7001",
+                "http://localhost:5001",
+                "https://localhost:7086",  // ✅ Add frontend port
+                "http://localhost:5086"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
@@ -83,7 +109,8 @@ builder.Services.AddScoped<IAdminService>(sp =>
         sp.GetRequiredService<IUnitOfWork>(),
         sp.GetRequiredService<UserManager<ApplicationUser>>(),
         sp.GetRequiredService<RoleManager<IdentityRole>>()
-    )); builder.Services.AddScoped<IChatService, ChatService>(); // ✅ NEW
+    ));
+builder.Services.AddScoped<IChatService, ChatService>();
 
 var app = builder.Build();
 
@@ -101,6 +128,7 @@ using (var scope = app.Services.CreateScope())
         if (!await roleManager.RoleExistsAsync(role))
         {
             await roleManager.CreateAsync(new IdentityRole(role));
+            Console.WriteLine($"✅ Created role: {role}");
         }
     }
 
@@ -121,6 +149,7 @@ using (var scope = app.Services.CreateScope())
         if (result.Succeeded)
         {
             await userManager.AddToRoleAsync(adminUser, "Admin");
+            Console.WriteLine($"✅ Admin user created: {adminEmail}");
 
             // Also link to employee directory
             var dbContext = services.GetRequiredService<ApplicationDbContext>();
@@ -133,8 +162,24 @@ using (var scope = app.Services.CreateScope())
                     EmployeeId = adminEmployee.EmployeeId
                 });
                 await dbContext.SaveChangesAsync();
+                Console.WriteLine($"✅ Admin linked to employee directory");
             }
         }
+        else
+        {
+            Console.WriteLine($"❌ Failed to create admin: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+        }
+    }
+    else
+    {
+        // ✅ Verify admin has Admin role
+        var roles_existing = await userManager.GetRolesAsync(adminUser);
+        if (!roles_existing.Contains("Admin"))
+        {
+            await userManager.AddToRoleAsync(adminUser, "Admin");
+            Console.WriteLine($"✅ Added Admin role to existing admin user");
+        }
+        Console.WriteLine($"✅ Admin user exists: {adminEmail} with roles: {string.Join(", ", roles_existing)}");
     }
 }
 
@@ -145,9 +190,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseCors("AllowWebApp");
+app.UseCors("AllowWebApp"); // ✅ CORS before Authentication
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
+Console.WriteLine("🚀 Sports Backend API is running...");
 app.Run();
