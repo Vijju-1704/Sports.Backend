@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using System.Text;
 using Sports.Infrastructure.Data;
 using Sports.Infrastructure.Identity;
@@ -14,7 +15,53 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+
+// ✅ ENHANCED SWAGGER CONFIGURATION WITH JWT SUPPORT
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Version = "v1",
+        Title = "Sports System API",
+        Description = "Corporate Sports Management System - ASP.NET Core Web API",
+        Contact = new OpenApiContact
+        {
+            Name = "Sports System",
+            Email = "support@sportsapp.com"
+        }
+    });
+
+    // ✅ ADD JWT AUTHENTICATION TO SWAGGER
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = @"JWT Authorization header using the Bearer scheme. 
+                      Enter 'Bearer' [space] and then your token in the text input below.
+                      Example: 'Bearer 12345abcdef'",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer",
+        BearerFormat = "JWT"
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                },
+                Scheme = "oauth2",
+                Name = "Bearer",
+                In = ParameterLocation.Header
+            },
+            new List<string>()
+        }
+    });
+});
 
 // 1. Database Context
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -32,7 +79,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
-// 3. ✅ ENHANCED JWT Authentication Configuration
+// 3. JWT Authentication Configuration
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -50,25 +97,27 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = builder.Configuration["JwtSettings:Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:Secret"]!)),
-        ClockSkew = TimeSpan.Zero // ✅ Remove default 5 minute clock skew
+        ClockSkew = TimeSpan.Zero
     };
 
-    // ✅ CRITICAL: Add logging for JWT authentication failures
     options.Events = new JwtBearerEvents
     {
         OnAuthenticationFailed = context =>
         {
-            Console.WriteLine($"JWT Authentication failed: {context.Exception.Message}");
+            Console.WriteLine($"❌ JWT Authentication failed: {context.Exception.Message}");
             return Task.CompletedTask;
         },
         OnTokenValidated = context =>
         {
-            Console.WriteLine($"JWT Token validated for user: {context.Principal?.Identity?.Name}");
+            var userEmail = context.Principal?.FindFirst("email")?.Value ?? "Unknown";
+            var roles = context.Principal?.FindAll(System.Security.Claims.ClaimTypes.Role)
+                .Select(c => c.Value) ?? Enumerable.Empty<string>();
+            Console.WriteLine($"✅ JWT Token validated for: {userEmail} | Roles: {string.Join(", ", roles)}");
             return Task.CompletedTask;
         },
         OnChallenge = context =>
         {
-            Console.WriteLine($"JWT Challenge: {context.Error}, {context.ErrorDescription}");
+            Console.WriteLine($"⚠️ JWT Challenge: {context.Error}, {context.ErrorDescription}");
             return Task.CompletedTask;
         }
     };
@@ -82,7 +131,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(
                 "https://localhost:7001",
                 "http://localhost:5001",
-                "https://localhost:7086",  // ✅ Add frontend port
+                "https://localhost:7086",
                 "http://localhost:5086"
             )
             .AllowAnyHeader()
@@ -121,6 +170,8 @@ using (var scope = app.Services.CreateScope())
     var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
     var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
 
+    Console.WriteLine("\n🔧 Setting up database and roles...\n");
+
     // Seed Roles
     var roles = new[] { "Admin", "User" };
     foreach (var role in roles)
@@ -132,7 +183,7 @@ using (var scope = app.Services.CreateScope())
         }
     }
 
-    // ✅ Seed Admin User
+    // Seed Admin User
     var adminEmail = "admin@techcorp.com";
     var adminUser = await userManager.FindByEmailAsync(adminEmail);
     if (adminUser == null)
@@ -151,7 +202,7 @@ using (var scope = app.Services.CreateScope())
             await userManager.AddToRoleAsync(adminUser, "Admin");
             Console.WriteLine($"✅ Admin user created: {adminEmail}");
 
-            // Also link to employee directory
+            // Link to employee directory
             var dbContext = services.GetRequiredService<ApplicationDbContext>();
             var adminEmployee = dbContext.EmployeeDirectory.FirstOrDefault(e => e.Email == adminEmail);
             if (adminEmployee != null)
@@ -172,28 +223,55 @@ using (var scope = app.Services.CreateScope())
     }
     else
     {
-        // ✅ Verify admin has Admin role
-        var roles_existing = await userManager.GetRolesAsync(adminUser);
-        if (!roles_existing.Contains("Admin"))
+        var existingRoles = await userManager.GetRolesAsync(adminUser);
+        if (!existingRoles.Contains("Admin"))
         {
             await userManager.AddToRoleAsync(adminUser, "Admin");
             Console.WriteLine($"✅ Added Admin role to existing admin user");
         }
-        Console.WriteLine($"✅ Admin user exists: {adminEmail} with roles: {string.Join(", ", roles_existing)}");
+        Console.WriteLine($"✅ Admin user exists: {adminEmail} | Roles: {string.Join(", ", existingRoles)}");
     }
+
+    Console.WriteLine("\n✨ Database setup complete!\n");
 }
 
-if (app.Environment.IsDevelopment())
+// ✅ CONFIGURE SWAGGER FOR ALL ENVIRONMENTS
+app.UseSwagger();
+app.UseSwaggerUI(options =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Sports System API v1");
+    options.RoutePrefix = "swagger"; // Access at /swagger
+    options.DocumentTitle = "Sports System API";
+    options.DisplayRequestDuration(); // Show request duration
+    options.EnableDeepLinking(); // Enable deep linking
+    options.EnableFilter(); // Enable search filter
+    options.ShowExtensions(); // Show vendor extensions
+});
 
 app.UseHttpsRedirection();
-app.UseCors("AllowWebApp"); // ✅ CORS before Authentication
+app.UseCors("AllowWebApp");
+
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 
-Console.WriteLine("🚀 Sports Backend API is running...");
+// ✅ LOG STARTUP INFORMATION
+var baseUrl = app.Environment.IsDevelopment()
+    ? "https://localhost:7164"
+    : "https://yourdomain.com";
+
+Console.WriteLine("\n" + new string('=', 60));
+Console.WriteLine("🚀 SPORTS SYSTEM API - RUNNING");
+Console.WriteLine(new string('=', 60));
+Console.WriteLine($"📍 API URL:     {baseUrl}");
+Console.WriteLine($"📚 Swagger UI:  {baseUrl}/swagger");
+Console.WriteLine($"📄 OpenAPI:     {baseUrl}/swagger/v1/swagger.json");
+Console.WriteLine(new string('=', 60));
+Console.WriteLine("\n💡 Quick Test:");
+Console.WriteLine($"   Login: POST {baseUrl}/api/auth/login");
+Console.WriteLine("   Credentials: admin@techcorp.com / Admin@123");
+Console.WriteLine("\n⚠️  Don't forget to authorize in Swagger with your JWT token!");
+Console.WriteLine(new string('=', 60) + "\n");
+
 app.Run();
