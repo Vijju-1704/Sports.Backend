@@ -25,7 +25,6 @@ public class JwtTokenGenerator
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
-        // ✅ CRITICAL FIX: Use "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
         // This is the standard ClaimTypes.Role that ASP.NET Core recognizes
         foreach (var role in roles)
         {

@@ -28,7 +28,7 @@ public class GameService : IGameService
         _joinRequestService = joinRequestService;
     }
 
-    // Advanced search with filters
+    // ✅ ENHANCED: Filter out completed/cancelled games by default
     public async Task<IEnumerable<GameDto>> GetAllGamesAsync(
         string? sport = null,
         DateTime? date = null,
@@ -36,6 +36,11 @@ public class GameService : IGameService
         string? city = null)
     {
         var query = _uow.Repository<Game>().GetQueryable();
+
+        // ✅ FIX 1: Only show Open, Full, and InProgress games (hide Completed/Cancelled)
+        query = query.Where(g => g.Status == GameStatus.Open ||
+                                  g.Status == GameStatus.Full ||
+                                  g.Status == GameStatus.InProgress);
 
         // Text search in title or sport name
         if (!string.IsNullOrEmpty(sport))
@@ -61,13 +66,19 @@ public class GameService : IGameService
             query = query.Where(g => g.Venue.City.Contains(city));
         }
 
+        // ✅ FIX 2: Only show upcoming games (future or today)
+        var today = DateTime.UtcNow.Date;
+        query = query.Where(g => g.DateTime.Date >= today);
+
         var games = await query
             .Include(g => g.Participants)
             .Include(g => g.Sport)
             .Include(g => g.Venue)
-            .Where(g => g.Status != GameStatus.Cancelled) // Don't show cancelled games
-            .OrderByDescending(g => g.DateTime)
+            .OrderBy(g => g.DateTime) // ✅ Show nearest games first
             .ToListAsync();
+
+        // ✅ FIX 3: Auto-update statuses before returning
+        await UpdateGameStatusesAsync(games);
 
         var gameDtos = new List<GameDto>();
 
@@ -92,11 +103,56 @@ public class GameService : IGameService
                 Status = g.Status.ToString(),
                 CostPerPerson = g.CostPerPerson,
                 SportName = g.Sport.Name,
-                SportIcon = g.Sport.IconUrl ?? ""
+                SportIcon = g.Sport.IconUrl ?? "",
+                RequireApproval = g.RequireApproval
             });
         }
 
         return gameDtos;
+    }
+
+    // ✅ NEW: Helper method to auto-update game statuses
+    private async Task UpdateGameStatusesAsync(IEnumerable<Game> games)
+    {
+        var now = DateTime.UtcNow;
+        bool hasChanges = false;
+
+        foreach (var game in games)
+        {
+            var gameEndTime = game.DateTime.AddMinutes(game.DurationMinutes);
+
+            // Game has ended -> Mark as Completed
+            if (now > gameEndTime && game.Status != GameStatus.Completed && game.Status != GameStatus.Cancelled)
+            {
+                game.Status = GameStatus.Completed;
+                hasChanges = true;
+                Console.WriteLine($"✅ Auto-completed game: {game.Title} (ID: {game.GameId})");
+            }
+            // Game is currently happening -> Mark as InProgress
+            else if (now >= game.DateTime && now <= gameEndTime && game.Status == GameStatus.Open)
+            {
+                game.Status = GameStatus.InProgress;
+                hasChanges = true;
+                Console.WriteLine($"▶️ Auto-started game: {game.Title} (ID: {game.GameId})");
+            }
+            // Game is full -> Update status
+            else if (game.Participants.Count >= game.MaxPlayers && game.Status == GameStatus.Open)
+            {
+                game.Status = GameStatus.Full;
+                hasChanges = true;
+            }
+            // Game has spots available -> Reopen
+            else if (game.Participants.Count < game.MaxPlayers && game.Status == GameStatus.Full)
+            {
+                game.Status = GameStatus.Open;
+                hasChanges = true;
+            }
+        }
+
+        if (hasChanges)
+        {
+            await _uow.SaveChangesAsync();
+        }
     }
 
     public async Task<GameDetailDto?> GetGameByIdAsync(int id, string? currentUserId = null)
@@ -110,6 +166,9 @@ public class GameService : IGameService
             .FirstOrDefaultAsync(g => g.GameId == id);
 
         if (game == null) return null;
+
+        // ✅ Update status before showing
+        await UpdateGameStatusesAsync(new[] { game });
 
         var host = await _userManager.FindByIdAsync(game.HostUserId);
         var participants = new List<ParticipantDto>();
@@ -176,6 +235,12 @@ public class GameService : IGameService
             throw new ArgumentException("MaxPlayers must be greater than or equal to MinPlayers");
         }
 
+        // ✅ Validate game is not in the past
+        if (createDto.DateTime < DateTime.UtcNow)
+        {
+            throw new ArgumentException("Cannot create a game in the past");
+        }
+
         var game = new Game
         {
             Title = createDto.Title,
@@ -188,7 +253,7 @@ public class GameService : IGameService
             MaxPlayers = createDto.MaxPlayers,
             CostPerPerson = createDto.CostPerPerson,
             EquipmentNeeded = createDto.EquipmentNeeded,
-            RequireApproval = createDto.RequireApproval, // ✅ NEW
+            RequireApproval = createDto.RequireApproval,
             Status = GameStatus.Open
         };
 
@@ -272,6 +337,12 @@ public class GameService : IGameService
         if (game.Participants.Any(p => p.UserId == userId)) return false;
         if (game.Participants.Count >= game.MaxPlayers) return false;
 
+        // ✅ Check if game is in the past
+        if (game.DateTime < DateTime.UtcNow)
+        {
+            return false;
+        }
+
         var participant = new GameParticipant
         {
             GameId = gameId,
@@ -299,7 +370,6 @@ public class GameService : IGameService
         return true;
     }
 
-    //Leave Game Feature
     public async Task<bool> LeaveGameAsync(int gameId, string userId)
     {
         var game = await _uow.Repository<Game>()
@@ -402,22 +472,29 @@ public class GameService : IGameService
         return true;
     }
 
+    // ✅ ENHANCED: Auto-complete old games
     public async Task AutoCompleteGamesAsync()
     {
-        var cutoffTime = DateTime.UtcNow.AddHours(-3); // Complete games 3 hours after end time
+        var now = DateTime.UtcNow;
 
         var gamesToComplete = await _uow.Repository<Game>()
             .GetQueryable()
-            .Where(g => g.Status == GameStatus.InProgress &&
-                       g.DateTime.AddMinutes(g.DurationMinutes) < cutoffTime)
+            .Where(g => (g.Status == GameStatus.Open ||
+                        g.Status == GameStatus.Full ||
+                        g.Status == GameStatus.InProgress) &&
+                       g.DateTime.AddMinutes(g.DurationMinutes) < now)
             .ToListAsync();
 
         foreach (var game in gamesToComplete)
         {
             game.Status = GameStatus.Completed;
+            Console.WriteLine($"✅ Auto-completed game: {game.Title} (ID: {game.GameId})");
         }
 
-        await _uow.SaveChangesAsync();
+        if (gamesToComplete.Any())
+        {
+            await _uow.SaveChangesAsync();
+            Console.WriteLine($"✅ Completed {gamesToComplete.Count} games automatically");
+        }
     }
-
 }

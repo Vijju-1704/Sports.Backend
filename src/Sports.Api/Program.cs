@@ -16,22 +16,16 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// ✅ ENHANCED SWAGGER CONFIGURATION WITH JWT SUPPORT
+// Swagger Configuration
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
         Version = "v1",
         Title = "Sports System API",
-        Description = "Corporate Sports Management System - ASP.NET Core Web API",
-        Contact = new OpenApiContact
-        {
-            Name = "Sports System",
-            Email = "support@sportsapp.com"
-        }
+        Description = "Corporate Sports Management System - ASP.NET Core Web API"
     });
 
-    // ✅ ADD JWT AUTHENTICATION TO SWAGGER
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = @"JWT Authorization header using the Bearer scheme. 
@@ -53,21 +47,18 @@ builder.Services.AddSwaggerGen(options =>
                 {
                     Type = ReferenceType.SecurityScheme,
                     Id = "Bearer"
-                },
-                Scheme = "oauth2",
-                Name = "Bearer",
-                In = ParameterLocation.Header
+                }
             },
             new List<string>()
         }
     });
 });
 
-// 1. Database Context
+// Database Context
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// 2. Identity Configuration
+// Identity Configuration
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
     options.Password.RequireDigit = true;
@@ -79,7 +70,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
-// 3. JWT Authentication Configuration
+// JWT Authentication
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -114,16 +105,11 @@ builder.Services.AddAuthentication(options =>
                 .Select(c => c.Value) ?? Enumerable.Empty<string>();
             Console.WriteLine($"✅ JWT Token validated for: {userEmail} | Roles: {string.Join(", ", roles)}");
             return Task.CompletedTask;
-        },
-        OnChallenge = context =>
-        {
-            Console.WriteLine($"⚠️ JWT Challenge: {context.Error}, {context.ErrorDescription}");
-            return Task.CompletedTask;
         }
     };
 });
 
-// 4. CORS Policy
+// CORS Policy
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowWebApp", policy =>
@@ -140,14 +126,14 @@ builder.Services.AddCors(options =>
     });
 });
 
-// 5. Repository Pattern
+// Repository Pattern
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 
-// 6. JWT Token Generator
+// JWT Token Generator
 builder.Services.AddScoped<JwtTokenGenerator>();
 
-// 7. Application Services
+// Application Services
 builder.Services.AddScoped<IJoinRequestService, JoinRequestService>();
 builder.Services.AddScoped<IUserProfileService, UserProfileService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -161,9 +147,12 @@ builder.Services.AddScoped<IAdminService>(sp =>
     ));
 builder.Services.AddScoped<IChatService, ChatService>();
 
+// ✅ NEW: Register Background Service for auto status updates
+builder.Services.AddHostedService<GameStatusBackgroundService>();
+
 var app = builder.Build();
 
-// 8. Seed Roles and Admin User
+// Seed Roles and Admin User
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -202,7 +191,6 @@ using (var scope = app.Services.CreateScope())
             await userManager.AddToRoleAsync(adminUser, "Admin");
             Console.WriteLine($"✅ Admin user created: {adminEmail}");
 
-            // Link to employee directory
             var dbContext = services.GetRequiredService<ApplicationDbContext>();
             var adminEmployee = dbContext.EmployeeDirectory.FirstOrDefault(e => e.Email == adminEmail);
             if (adminEmployee != null)
@@ -233,19 +221,27 @@ using (var scope = app.Services.CreateScope())
     }
 
     Console.WriteLine("\n✨ Database setup complete!\n");
+
+    // ✅ Run initial status update
+    try
+    {
+        var gameService = services.GetRequiredService<IGameService>();
+        await gameService.AutoCompleteGamesAsync();
+        Console.WriteLine("✅ Initial game status check completed\n");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"⚠️ Initial status check failed: {ex.Message}\n");
+    }
 }
 
-// ✅ CONFIGURE SWAGGER FOR ALL ENVIRONMENTS
+// Configure Swagger
 app.UseSwagger();
 app.UseSwaggerUI(options =>
 {
     options.SwaggerEndpoint("/swagger/v1/swagger.json", "Sports System API v1");
-    options.RoutePrefix = "swagger"; // Access at /swagger
+    options.RoutePrefix = "swagger";
     options.DocumentTitle = "Sports System API";
-    options.DisplayRequestDuration(); // Show request duration
-    options.EnableDeepLinking(); // Enable deep linking
-    options.EnableFilter(); // Enable search filter
-    options.ShowExtensions(); // Show vendor extensions
 });
 
 app.UseHttpsRedirection();
@@ -256,7 +252,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// ✅ LOG STARTUP INFORMATION
+// Startup Information
 var baseUrl = app.Environment.IsDevelopment()
     ? "https://localhost:7164"
     : "https://yourdomain.com";
@@ -266,12 +262,12 @@ Console.WriteLine("🚀 SPORTS SYSTEM API - RUNNING");
 Console.WriteLine(new string('=', 60));
 Console.WriteLine($"📍 API URL:     {baseUrl}");
 Console.WriteLine($"📚 Swagger UI:  {baseUrl}/swagger");
-Console.WriteLine($"📄 OpenAPI:     {baseUrl}/swagger/v1/swagger.json");
+Console.WriteLine($"🎮 Status Check: Running every 5 minutes");
 Console.WriteLine(new string('=', 60));
-Console.WriteLine("\n💡 Quick Test:");
-Console.WriteLine($"   Login: POST {baseUrl}/api/auth/login");
-Console.WriteLine("   Credentials: admin@techcorp.com / Admin@123");
-Console.WriteLine("\n⚠️  Don't forget to authorize in Swagger with your JWT token!");
+Console.WriteLine("\n💡 Features:");
+Console.WriteLine("   ✅ Auto-complete games after end time");
+Console.WriteLine("   ✅ Hide completed/cancelled games");
+Console.WriteLine("   ✅ Show only upcoming games");
 Console.WriteLine(new string('=', 60) + "\n");
 
 app.Run();
