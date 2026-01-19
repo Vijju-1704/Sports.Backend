@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Sports.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class init : Migration
+    public partial class Init : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -52,6 +52,28 @@ namespace Sports.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_AspNetUsers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AuditLogs",
+                columns: table => new
+                {
+                    AuditId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    UserName = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    EntityName = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    EntityId = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Action = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    OldValues = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    NewValues = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ChangedProperties = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Timestamp = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    IpAddress = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AuditLogs", x => x.AuditId);
                 });
 
             migrationBuilder.CreateTable(
@@ -497,6 +519,9 @@ namespace Sports.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "AspNetUserTokens");
+
+            migrationBuilder.DropTable(
+                name: "AuditLogs");
 
             migrationBuilder.DropTable(
                 name: "ChatMessages");

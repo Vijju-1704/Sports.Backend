@@ -34,6 +34,8 @@ public class NotificationService : INotificationService
 
         await _uow.Repository<Notification>().AddAsync(notification);
         await _uow.SaveChangesAsync();
+        
+        // Note: SignalR notifications are handled at the API layer
     }
 
     public async Task<IEnumerable<NotificationDto>> GetUserNotificationsAsync(string userId, bool unreadOnly = false)
@@ -120,3 +122,4 @@ public class NotificationService : INotificationService
         return count;
     }
 }
+

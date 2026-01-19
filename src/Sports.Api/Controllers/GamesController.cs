@@ -30,6 +30,21 @@ public class GamesController : ControllerBase
         return Ok(games);
     }
 
+    /// <summary>
+    /// Get games with pagination
+    /// </summary>
+    [HttpGet("paginated")]
+    public async Task<ActionResult> GetAllPaginated(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 12,
+        [FromQuery] string? search = null,
+        [FromQuery] int? sportId = null,
+        [FromQuery] string? city = null)
+    {
+        var result = await _gameService.GetGamesPaginatedAsync(page, pageSize, search, sportId, city);
+        return Ok(result);
+    }
+
     [HttpGet("{id}")]
     public async Task<ActionResult<GameDetailDto>> GetById(int id)
     {

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Sports.Application.DTOs.Auth;
+using Sports.Application.Exceptions;
 using Sports.Application.Interfaces;
 using Sports.Domain.Entities;
 using Sports.Domain.Interfaces;
@@ -9,12 +10,12 @@ namespace Sports.Infrastructure.Services;
 
 public class AuthService : IAuthService
 {
-    private readonly UserManager<ApplicationUser> UserManager;
-    private readonly SignInManager<ApplicationUser> SignInManager;
-    private readonly JwtTokenGenerator JwtTokenGenerator;
-    private readonly IGenericRepository<EmployeeDirectory> EmployeeRepo; // Direct repo access for check
-    private readonly IGenericRepository<UserEmployeeMap> MapRepo;
-    private readonly IUnitOfWork Uow;
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly JwtTokenGenerator _jwtTokenGenerator;
+    private readonly IGenericRepository<EmployeeDirectory> _employeeRepo;
+    private readonly IGenericRepository<UserEmployeeMap> _mapRepo;
+    private readonly IUnitOfWork _uow;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
@@ -22,30 +23,54 @@ public class AuthService : IAuthService
         JwtTokenGenerator jwtTokenGenerator,
         IUnitOfWork uow)
     {
-        UserManager = userManager;
-        SignInManager = signInManager;
-        JwtTokenGenerator = jwtTokenGenerator;
-        Uow = uow;
-        EmployeeRepo = Uow.Repository<EmployeeDirectory>();
-        MapRepo = Uow.Repository<UserEmployeeMap>();
+        _userManager = userManager;
+        _signInManager = signInManager;
+        _jwtTokenGenerator = jwtTokenGenerator;
+        _uow = uow;
+        _employeeRepo = _uow.Repository<EmployeeDirectory>();
+        _mapRepo = _uow.Repository<UserEmployeeMap>();
     }
 
     public async Task<AuthResponseDto> LoginAsync(LoginDto loginDto)
     {
-        var user = await UserManager.FindByEmailAsync(loginDto.Email);
+        var user = await _userManager.FindByEmailAsync(loginDto.Email);
         if (user == null)
         {
-            throw new Exception("Invalid Username or Password"); // In real app, use custom exception
+            throw new ValidationException("Credentials", "Invalid email or password.");
         }
 
-        var result = await SignInManager.CheckPasswordSignInAsync(user, loginDto.Password, false);
+        // ✅ CHECK IF ACCOUNT IS LOCKED
+        if (await _userManager.IsLockedOutAsync(user))
+        {
+            var lockoutEnd = await _userManager.GetLockoutEndDateAsync(user);
+            var minutesRemaining = (int)(lockoutEnd!.Value - DateTimeOffset.UtcNow).TotalMinutes + 1;
+            throw new AccountLockedException(minutesRemaining);
+        }
+
+        // ✅ CHECK PASSWORD WITH LOCKOUT ENABLED
+        var result = await _signInManager.CheckPasswordSignInAsync(user, loginDto.Password, lockoutOnFailure: true);
+
         if (!result.Succeeded)
         {
-            throw new Exception("Invalid Username or Password");
+            if (result.IsLockedOut)
+            {
+                throw new AccountLockedException(15);
+            }
+
+            // Get remaining attempts
+            var failedCount = await _userManager.GetAccessFailedCountAsync(user);
+            var remaining = 5 - failedCount;
+            
+            throw new ValidationException("Credentials", $"Invalid email or password. {remaining} attempt(s) remaining.");
         }
 
-        var roles = await UserManager.GetRolesAsync(user);
-        var token = JwtTokenGenerator.GenerateToken(user, roles);
+        // ✅ RESET FAILED COUNT ON SUCCESSFUL LOGIN
+        await _userManager.ResetAccessFailedCountAsync(user);
+
+        var roles = await _userManager.GetRolesAsync(user);
+        var token = _jwtTokenGenerator.GenerateToken(user, roles);
+
+        Console.WriteLine($"✅ User logged in: {user.Email} | Roles: {string.Join(", ", roles)}");
 
         return new AuthResponseDto
         {
@@ -60,17 +85,25 @@ public class AuthService : IAuthService
     public async Task<AuthResponseDto> RegisterAsync(RegisterDto registerDto)
     {
         // 1. Validation: Check if user exists in Employee Directory
-        var employees = await EmployeeRepo.FindAsync(e => e.Email == registerDto.Email && e.EmployeeCode == registerDto.EmployeeCode);
+        var employees = await _employeeRepo.FindAsync(
+            e => e.Email == registerDto.Email && e.EmployeeCode == registerDto.EmployeeCode);
         var employee = employees.FirstOrDefault();
 
         if (employee == null)
         {
-            throw new Exception("Registration Failed: Details do not match our Employee Directory.");
+            throw new ValidationException("EmployeeCode", "Registration failed. Details do not match our Employee Directory.");
         }
 
         if (!employee.IsActive)
         {
-             throw new Exception("Registration Failed: Employee is not active.");
+            throw new ValidationException("Employee", "Registration failed. Employee is not active.");
+        }
+
+        // Check if user already exists
+        var existingUser = await _userManager.FindByEmailAsync(registerDto.Email);
+        if (existingUser != null)
+        {
+            throw new DuplicateException("A user with this email address already exists.");
         }
 
         // 2. Create Identity User
@@ -82,29 +115,33 @@ public class AuthService : IAuthService
             DateRegistered = DateTime.UtcNow
         };
 
-        var result = await UserManager.CreateAsync(user, registerDto.Password);
+        var result = await _userManager.CreateAsync(user, registerDto.Password);
         if (!result.Succeeded)
         {
-            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            throw new Exception($"Registration Failed: {errors}");
+            var errors = result.Errors.ToDictionary(
+                e => e.Code,
+                e => new[] { e.Description });
+            throw new ValidationException(errors);
         }
 
         // 3. Link User to Employee
-        await MapRepo.AddAsync(new UserEmployeeMap
+        await _mapRepo.AddAsync(new UserEmployeeMap
         {
             UserId = user.Id,
             EmployeeId = employee.EmployeeId
         });
-        await Uow.SaveChangesAsync();
+        await _uow.SaveChangesAsync();
 
-        // 4. Default Role
-        await UserManager.AddToRoleAsync(user, "User");
+        // 4. Add Default Role
+        await _userManager.AddToRoleAsync(user, "User");
 
         // 5. Generate Token
         var roles = new List<string> { "User" };
-        var token = JwtTokenGenerator.GenerateToken(user, roles);
+        var token = _jwtTokenGenerator.GenerateToken(user, roles);
 
-         return new AuthResponseDto
+        Console.WriteLine($"✅ New user registered: {user.Email}");
+
+        return new AuthResponseDto
         {
             UserId = user.Id,
             Email = user.Email!,

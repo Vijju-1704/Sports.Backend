@@ -4,19 +4,27 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using System.Threading.RateLimiting;
+using FluentValidation;
 using Sports.Infrastructure.Data;
 using Sports.Infrastructure.Identity;
 using Sports.Domain.Interfaces;
 using Sports.Infrastructure.Repositories;
 using Sports.Application.Interfaces;
 using Sports.Infrastructure.Services;
+using Sports.Application.Mappings;
+using Sports.Application.Validators;
+using Sports.Application.Services;
+using Sports.Api.Middleware;
+using Sports.Api.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ========== CONTROLLERS ==========
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// Swagger Configuration
+// ========== SWAGGER CONFIGURATION ==========
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
@@ -54,23 +62,32 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// Database Context
+// ========== DATABASE CONTEXT ==========
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Identity Configuration
+// ========== IDENTITY CONFIGURATION WITH LOCKOUT ==========
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
+    // Password requirements
     options.Password.RequireDigit = true;
     options.Password.RequireLowercase = true;
     options.Password.RequireUppercase = true;
     options.Password.RequireNonAlphanumeric = false;
     options.Password.RequiredLength = 6;
+
+    // ✅ LOCKOUT SETTINGS
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.AllowedForNewUsers = true;
+
+    // User settings
+    options.User.RequireUniqueEmail = true;
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
-// JWT Authentication
+// ========== JWT AUTHENTICATION ==========
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -93,6 +110,22 @@ builder.Services.AddAuthentication(options =>
 
     options.Events = new JwtBearerEvents
     {
+        OnMessageReceived = context =>
+        {
+            // Read token from query string for SignalR
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            
+            Console.WriteLine($"🔍 OnMessageReceived - Path: {path}, Token present: {!string.IsNullOrEmpty(accessToken)}");
+            
+            if (!string.IsNullOrEmpty(accessToken) &&
+                (path.StartsWithSegments("/chatHub") || path.StartsWithSegments("/notificationHub")))
+            {
+                context.Token = accessToken;
+                Console.WriteLine($"✅ Token set for SignalR hub");
+            }
+            return Task.CompletedTask;
+        },
         OnAuthenticationFailed = context =>
         {
             Console.WriteLine($"❌ JWT Authentication failed: {context.Exception.Message}");
@@ -109,7 +142,7 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// CORS Policy
+// ========== CORS POLICY ==========
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowWebApp", policy =>
@@ -126,19 +159,57 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Repository Pattern
+// ========== ✅ AUTOMAPPER ==========
+builder.Services.AddAutoMapper(cfg =>
+{
+    cfg.AddProfile<MappingProfile>();
+});
+
+// ========== ✅ FLUENT VALIDATION ==========
+builder.Services.AddValidatorsFromAssemblyContaining<CreateGameDtoValidator>();
+
+// ========== ✅ MEMORY CACHE ==========
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<ICacheService, MemoryCacheService>();
+
+// ========== ✅ RATE LIMITING ==========
+builder.Services.AddRateLimiter(options =>
+{
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.User.Identity?.Name ?? context.Request.Headers.Host.ToString(),
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                AutoReplenishment = true,
+                PermitLimit = 100,
+                QueueLimit = 0,
+                Window = TimeSpan.FromMinutes(1)
+            }));
+
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.StatusCode = 429;
+        await context.HttpContext.Response.WriteAsync("Too many requests. Please try again later.", token);
+    };
+});
+
+// ========== REPOSITORY PATTERN ==========
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 
-// JWT Token Generator
+// ========== HTTP CONTEXT ACCESSOR ==========
+builder.Services.AddHttpContextAccessor();
+
+// ========== JWT TOKEN GENERATOR ==========
 builder.Services.AddScoped<JwtTokenGenerator>();
 
-// Application Services
+// ========== APPLICATION SERVICES ==========
 builder.Services.AddScoped<IJoinRequestService, JoinRequestService>();
 builder.Services.AddScoped<IUserProfileService, UserProfileService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IGameService, GameService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+
 builder.Services.AddScoped<IAdminService>(sp =>
     new AdminService(
         sp.GetRequiredService<IUnitOfWork>(),
@@ -147,12 +218,15 @@ builder.Services.AddScoped<IAdminService>(sp =>
     ));
 builder.Services.AddScoped<IChatService, ChatService>();
 
-// ✅ NEW: Register Background Service for auto status updates
+// ========== ✅ SIGNALR ==========
+builder.Services.AddSignalR();
+
+// ========== BACKGROUND SERVICE ==========
 builder.Services.AddHostedService<GameStatusBackgroundService>();
 
 var app = builder.Build();
 
-// Seed Roles and Admin User
+// ========== SEED ROLES AND ADMIN USER ==========
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -222,7 +296,7 @@ using (var scope = app.Services.CreateScope())
 
     Console.WriteLine("\n✨ Database setup complete!\n");
 
-    // ✅ Run initial status update
+    // Run initial status update
     try
     {
         var gameService = services.GetRequiredService<IGameService>();
@@ -235,7 +309,9 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Configure Swagger
+// ========== MIDDLEWARE PIPELINE ==========
+
+// Swagger
 app.UseSwagger();
 app.UseSwaggerUI(options =>
 {
@@ -244,30 +320,45 @@ app.UseSwaggerUI(options =>
     options.DocumentTitle = "Sports System API";
 });
 
+// ✅ GLOBAL EXCEPTION HANDLER
+app.UseMiddleware<GlobalExceptionMiddleware>();
+
 app.UseHttpsRedirection();
 app.UseCors("AllowWebApp");
+
+// ✅ RATE LIMITER
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
-// Startup Information
+// ✅ MAP SIGNALR HUBS
+app.MapHub<ChatHub>("/chatHub");
+app.MapHub<NotificationHub>("/notificationHub");
+
+// ========== STARTUP INFORMATION ==========
 var baseUrl = app.Environment.IsDevelopment()
     ? "https://localhost:7164"
     : "https://yourdomain.com";
 
 Console.WriteLine("\n" + new string('=', 60));
-Console.WriteLine("🚀 SPORTS SYSTEM API - RUNNING");
+Console.WriteLine("🚀 SPORTS SYSTEM API - PHASE 2 COMPLETE");
 Console.WriteLine(new string('=', 60));
 Console.WriteLine($"📍 API URL:     {baseUrl}");
 Console.WriteLine($"📚 Swagger UI:  {baseUrl}/swagger");
-Console.WriteLine($"🎮 Status Check: Running every 5 minutes");
+Console.WriteLine($"💬 Chat Hub:    {baseUrl}/chatHub");
+Console.WriteLine($"🔔 Notify Hub:  {baseUrl}/notificationHub");
 Console.WriteLine(new string('=', 60));
-Console.WriteLine("\n💡 Features:");
-Console.WriteLine("   ✅ Auto-complete games after end time");
-Console.WriteLine("   ✅ Hide completed/cancelled games");
-Console.WriteLine("   ✅ Show only upcoming games");
+Console.WriteLine("\n✅ Phase 1 Features:");
+Console.WriteLine("   ✅ AutoMapper, FluentValidation, Custom Exceptions");
+Console.WriteLine("   ✅ Account Lockout, Rate Limiting, Caching");
+Console.WriteLine("\n✅ Phase 2 Features:");
+Console.WriteLine("   ✅ Pagination - Games paginated API");
+Console.WriteLine("   ✅ SignalR - Real-time chat & notifications");
+Console.WriteLine("   ✅ Soft Delete - Global query filter");
+Console.WriteLine("   ✅ Audit Trail - Automatic change tracking");
 Console.WriteLine(new string('=', 60) + "\n");
 
 app.Run();
