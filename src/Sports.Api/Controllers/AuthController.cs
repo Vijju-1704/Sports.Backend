@@ -8,11 +8,11 @@ namespace Sports.Api.Controllers;
 [ApiController]
 public class AuthController : ControllerBase
 {
-    private readonly IAuthService _authService;
+    private readonly IAuthService AuthService;
 
     public AuthController(IAuthService authService)
     {
-        _authService = authService;
+        AuthService = authService;
     }
 
     [HttpPost("login")]
@@ -20,7 +20,7 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var response = await _authService.LoginAsync(loginDto);
+            var response = await AuthService.LoginAsync(loginDto);
             return Ok(response);
         }
         catch (Exception ex)
@@ -34,7 +34,7 @@ public class AuthController : ControllerBase
     {
          try
         {
-            var response = await _authService.RegisterAsync(registerDto);
+            var response = await AuthService.RegisterAsync(registerDto);
             return Ok(response);
         }
         catch (Exception ex)

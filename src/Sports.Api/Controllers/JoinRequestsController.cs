@@ -11,11 +11,11 @@ namespace Sports.Api.Controllers;
 [Authorize]
 public class JoinRequestsController : ControllerBase
 {
-    private readonly IJoinRequestService _joinRequestService;
+    private readonly IJoinRequestService JoinRequestService;
 
     public JoinRequestsController(IJoinRequestService joinRequestService)
     {
-        _joinRequestService = joinRequestService;
+        JoinRequestService = joinRequestService;
     }
 
     [HttpPost("game/{gameId}")]
@@ -26,7 +26,7 @@ public class JoinRequestsController : ControllerBase
 
         try
         {
-            var request = await _joinRequestService.CreateJoinRequestAsync(gameId, userId, dto);
+            var request = await JoinRequestService.CreateJoinRequestAsync(gameId, userId, dto);
             return Ok(request);
         }
         catch (Exception ex)
@@ -38,7 +38,7 @@ public class JoinRequestsController : ControllerBase
     [HttpGet("game/{gameId}")]
     public async Task<ActionResult<IEnumerable<JoinRequestDto>>> GetGameJoinRequests(int gameId)
     {
-        var requests = await _joinRequestService.GetGameJoinRequestsAsync(gameId);
+        var requests = await JoinRequestService.GetGameJoinRequestsAsync(gameId);
         return Ok(requests);
     }
 
@@ -48,7 +48,7 @@ public class JoinRequestsController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        var requests = await _joinRequestService.GetUserJoinRequestsAsync(userId);
+        var requests = await JoinRequestService.GetUserJoinRequestsAsync(userId);
         return Ok(requests);
     }
 
@@ -58,7 +58,7 @@ public class JoinRequestsController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        var result = await _joinRequestService.RespondToJoinRequestAsync(requestId, userId, dto);
+        var result = await JoinRequestService.RespondToJoinRequestAsync(requestId, userId, dto);
         if (!result) return BadRequest(new { message = "Failed to respond to request" });
 
         return Ok(new { message = dto.Approve ? "Request approved" : "Request rejected" });
@@ -70,7 +70,7 @@ public class JoinRequestsController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        var result = await _joinRequestService.CancelJoinRequestAsync(requestId, userId);
+        var result = await JoinRequestService.CancelJoinRequestAsync(requestId, userId);
         if (!result) return BadRequest(new { message = "Failed to cancel request" });
 
         return Ok(new { message = "Request cancelled" });

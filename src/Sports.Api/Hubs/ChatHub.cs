@@ -11,13 +11,13 @@ namespace Sports.Api.Hubs;
 [Authorize]
 public class ChatHub : Hub
 {
-    private readonly IChatService _chatService;
-    private readonly ILogger<ChatHub> _logger;
+    private readonly IChatService ChatService;
+    private readonly ILogger<ChatHub> Logger;
 
     public ChatHub(IChatService chatService, ILogger<ChatHub> logger)
     {
-        _chatService = chatService;
-        _logger = logger;
+        ChatService = chatService;
+        Logger = logger;
     }
 
     /// <summary>
@@ -27,7 +27,7 @@ public class ChatHub : Hub
     {
         var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         await Groups.AddToGroupAsync(Context.ConnectionId, $"game_{gameId}");
-        _logger.LogInformation("User {UserId} joined game room {GameId}", userId, gameId);
+        Logger.LogInformation("User {UserId} joined game room {GameId}", userId, gameId);
         
         // Notify others that user joined
         await Clients.Group($"game_{gameId}").SendAsync("UserJoined", new
@@ -44,7 +44,7 @@ public class ChatHub : Hub
     {
         var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"game_{gameId}");
-        _logger.LogInformation("User {UserId} left game room {GameId}", userId, gameId);
+        Logger.LogInformation("User {UserId} left game room {GameId}", userId, gameId);
     }
 
     /// <summary>
@@ -56,7 +56,7 @@ public class ChatHub : Hub
         
         if (string.IsNullOrEmpty(userId))
         {
-            _logger.LogWarning("Unauthorized send message attempt");
+            Logger.LogWarning("Unauthorized send message attempt");
             return;
         }
 
@@ -69,7 +69,7 @@ public class ChatHub : Hub
         {
             // Save to database
             var dto = new Sports.Application.DTOs.Chat.SendMessageDto { Content = content };
-            var message = await _chatService.SendMessageAsync(gameId, userId, dto);
+            var message = await ChatService.SendMessageAsync(gameId, userId, dto);
 
             // Broadcast to all clients in the game room
             await Clients.Group($"game_{gameId}").SendAsync("ReceiveMessage", new
@@ -83,11 +83,11 @@ public class ChatHub : Hub
                 IsCurrentUser = false // Client will determine this
             });
 
-            _logger.LogInformation("Message sent in game {GameId} by user {UserId}", gameId, userId);
+            Logger.LogInformation("Message sent in game {GameId} by user {UserId}", gameId, userId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error sending message in game {GameId}", gameId);
+            Logger.LogError(ex, "Error sending message in game {GameId}", gameId);
             await Clients.Caller.SendAsync("Error", "Failed to send message");
         }
     }
@@ -95,14 +95,14 @@ public class ChatHub : Hub
     public override async Task OnConnectedAsync()
     {
         var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        _logger.LogInformation("User {UserId} connected to ChatHub", userId);
+        Logger.LogInformation("User {UserId} connected to ChatHub", userId);
         await base.OnConnectedAsync();
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        _logger.LogInformation("User {UserId} disconnected from ChatHub", userId);
+        Logger.LogInformation("User {UserId} disconnected from ChatHub", userId);
         await base.OnDisconnectedAsync(exception);
     }
 }

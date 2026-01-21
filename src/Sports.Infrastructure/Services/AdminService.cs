@@ -12,25 +12,25 @@ namespace Sports.Infrastructure.Services;
 
 public class AdminService : IAdminService
 {
-    private readonly IUnitOfWork _uow;
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly RoleManager<IdentityRole> _roleManager;
+    private readonly IUnitOfWork Uow;
+    private readonly UserManager<ApplicationUser> UserManager;
+    private readonly RoleManager<IdentityRole> RoleManager;
 
     public AdminService(
         IUnitOfWork uow,
         UserManager<ApplicationUser> userManager,
         RoleManager<IdentityRole> roleManager)
     {
-        _uow = uow;
-        _userManager = userManager;
-        _roleManager = roleManager;
+        Uow = uow;
+        UserManager = userManager;
+        RoleManager = roleManager;
     }
 
     // ========== SPORTS MANAGEMENT ==========
 
     public async Task<IEnumerable<SportDto>> GetAllSportsAsync()
     {
-        var sports = await _uow.Repository<Sport>().GetAllAsync();
+        var sports = await Uow.Repository<Sport>().GetAllAsync();
         return sports.Select(s => new SportDto
         {
             SportId = s.SportId,
@@ -42,7 +42,7 @@ public class AdminService : IAdminService
 
     public async Task<SportDto?> GetSportByIdAsync(int id)
     {
-        var sport = await _uow.Repository<Sport>().GetByIdAsync(id);
+        var sport = await Uow.Repository<Sport>().GetByIdAsync(id);
         if (sport == null) return null;
 
         return new SportDto
@@ -63,8 +63,8 @@ public class AdminService : IAdminService
             IconUrl = dto.IconUrl
         };
 
-        await _uow.Repository<Sport>().AddAsync(sport);
-        await _uow.SaveChangesAsync();
+        await Uow.Repository<Sport>().AddAsync(sport);
+        await Uow.SaveChangesAsync();
 
         return new SportDto
         {
@@ -77,24 +77,24 @@ public class AdminService : IAdminService
 
     public async Task<bool> UpdateSportAsync(int id, CreateSportDto dto)
     {
-        var sport = await _uow.Repository<Sport>().GetByIdAsync(id);
+        var sport = await Uow.Repository<Sport>().GetByIdAsync(id);
         if (sport == null) return false;
 
         sport.Name = dto.Name;
         sport.Type = dto.Type;
         sport.IconUrl = dto.IconUrl;
 
-        await _uow.SaveChangesAsync();
+        await Uow.SaveChangesAsync();
         return true;
     }
 
     public async Task<bool> DeleteSportAsync(int id)
     {
-        var sport = await _uow.Repository<Sport>().GetByIdAsync(id);
+        var sport = await Uow.Repository<Sport>().GetByIdAsync(id);
         if (sport == null) return false;
 
         // Check if sport is used in any games
-        var gamesUsingSport = await _uow.Repository<Game>()
+        var gamesUsingSport = await Uow.Repository<Game>()
             .FindAsync(g => g.SportId == id);
 
         if (gamesUsingSport.Any())
@@ -102,8 +102,8 @@ public class AdminService : IAdminService
             throw new InvalidOperationException("Cannot delete sport that is being used in games");
         }
 
-        _uow.Repository<Sport>().Remove(sport);
-        await _uow.SaveChangesAsync();
+        Uow.Repository<Sport>().Remove(sport);
+        await Uow.SaveChangesAsync();
         return true;
     }
 
@@ -111,7 +111,7 @@ public class AdminService : IAdminService
 
     public async Task<IEnumerable<VenueDto>> GetAllVenuesAsync()
     {
-        var venues = await _uow.Repository<Venue>().GetAllAsync();
+        var venues = await Uow.Repository<Venue>().GetAllAsync();
         return venues.Select(v => new VenueDto
         {
             VenueId = v.VenueId,
@@ -125,7 +125,7 @@ public class AdminService : IAdminService
 
     public async Task<VenueDto?> GetVenueByIdAsync(int id)
     {
-        var venue = await _uow.Repository<Venue>().GetByIdAsync(id);
+        var venue = await Uow.Repository<Venue>().GetByIdAsync(id);
         if (venue == null) return null;
 
         return new VenueDto
@@ -150,8 +150,8 @@ public class AdminService : IAdminService
             Facilities = dto.Facilities
         };
 
-        await _uow.Repository<Venue>().AddAsync(venue);
-        await _uow.SaveChangesAsync();
+        await Uow.Repository<Venue>().AddAsync(venue);
+        await Uow.SaveChangesAsync();
 
         return new VenueDto
         {
@@ -166,7 +166,7 @@ public class AdminService : IAdminService
 
     public async Task<bool> UpdateVenueAsync(int id, CreateVenueDto dto)
     {
-        var venue = await _uow.Repository<Venue>().GetByIdAsync(id);
+        var venue = await Uow.Repository<Venue>().GetByIdAsync(id);
         if (venue == null) return false;
 
         venue.Name = dto.Name;
@@ -175,17 +175,17 @@ public class AdminService : IAdminService
         venue.MapsUrl = dto.MapsUrl;
         venue.Facilities = dto.Facilities;
 
-        await _uow.SaveChangesAsync();
+        await Uow.SaveChangesAsync();
         return true;
     }
 
     public async Task<bool> DeleteVenueAsync(int id)
     {
-        var venue = await _uow.Repository<Venue>().GetByIdAsync(id);
+        var venue = await Uow.Repository<Venue>().GetByIdAsync(id);
         if (venue == null) return false;
 
         // Check if venue is used in any games
-        var gamesUsingVenue = await _uow.Repository<Game>()
+        var gamesUsingVenue = await Uow.Repository<Game>()
             .FindAsync(g => g.VenueId == id);
 
         if (gamesUsingVenue.Any())
@@ -193,8 +193,8 @@ public class AdminService : IAdminService
             throw new InvalidOperationException("Cannot delete venue that is being used in games");
         }
 
-        _uow.Repository<Venue>().Remove(venue);
-        await _uow.SaveChangesAsync();
+        Uow.Repository<Venue>().Remove(venue);
+        await Uow.SaveChangesAsync();
         return true;
     }
 
@@ -202,7 +202,7 @@ public class AdminService : IAdminService
 
     public async Task<IEnumerable<EmployeeDto>> GetAllEmployeesAsync()
     {
-        var employees = await _uow.Repository<EmployeeDirectory>().GetAllAsync();
+        var employees = await Uow.Repository<EmployeeDirectory>().GetAllAsync();
         return employees.Select(e => new EmployeeDto
         {
             EmployeeId = e.EmployeeId,
@@ -217,7 +217,7 @@ public class AdminService : IAdminService
 
     public async Task<EmployeeDto?> GetEmployeeByIdAsync(int id)
     {
-        var employee = await _uow.Repository<EmployeeDirectory>().GetByIdAsync(id);
+        var employee = await Uow.Repository<EmployeeDirectory>().GetByIdAsync(id);
         if (employee == null) return null;
 
         return new EmployeeDto
@@ -235,7 +235,7 @@ public class AdminService : IAdminService
     public async Task<bool> CreateEmployeeAsync(CreateEmployeeDto dto)
     {
         // Check for duplicate email or employee code
-        var existing = await _uow.Repository<EmployeeDirectory>()
+        var existing = await Uow.Repository<EmployeeDirectory>()
             .FindAsync(e => e.Email == dto.Email || e.EmployeeCode == dto.EmployeeCode);
 
         if (existing.Any())
@@ -253,14 +253,14 @@ public class AdminService : IAdminService
             IsActive = true
         };
 
-        await _uow.Repository<EmployeeDirectory>().AddAsync(employee);
-        await _uow.SaveChangesAsync();
+        await Uow.Repository<EmployeeDirectory>().AddAsync(employee);
+        await Uow.SaveChangesAsync();
         return true;
     }
 
     public async Task<bool> UpdateEmployeeAsync(int id, UpdateEmployeeDto dto)
     {
-        var employee = await _uow.Repository<EmployeeDirectory>().GetByIdAsync(id);
+        var employee = await Uow.Repository<EmployeeDirectory>().GetByIdAsync(id);
         if (employee == null) return false;
 
         employee.Email = dto.Email;
@@ -269,27 +269,27 @@ public class AdminService : IAdminService
         employee.Department = dto.Department;
         employee.Designation = dto.Designation;
 
-        await _uow.SaveChangesAsync();
+        await Uow.SaveChangesAsync();
         return true;
     }
 
     public async Task<bool> DeactivateEmployeeAsync(int id)
     {
-        var employee = await _uow.Repository<EmployeeDirectory>().GetByIdAsync(id);
+        var employee = await Uow.Repository<EmployeeDirectory>().GetByIdAsync(id);
         if (employee == null) return false;
 
         employee.IsActive = false;
-        await _uow.SaveChangesAsync();
+        await Uow.SaveChangesAsync();
         return true;
     }
 
     public async Task<bool> ActivateEmployeeAsync(int id)
     {
-        var employee = await _uow.Repository<EmployeeDirectory>().GetByIdAsync(id);
+        var employee = await Uow.Repository<EmployeeDirectory>().GetByIdAsync(id);
         if (employee == null) return false;
 
         employee.IsActive = true;
-        await _uow.SaveChangesAsync();
+        await Uow.SaveChangesAsync();
         return true;
     }
 
@@ -297,16 +297,16 @@ public class AdminService : IAdminService
 
     public async Task<IEnumerable<UserDto>> GetAllUsersAsync()
     {
-        var users = _userManager.Users.ToList();
+        var users = UserManager.Users.ToList();
         var userDtos = new List<UserDto>();
 
         foreach (var user in users)
         {
-            var roles = await _userManager.GetRolesAsync(user);
-            var gamesHosted = await _uow.Repository<Game>()
+            var roles = await UserManager.GetRolesAsync(user);
+            var gamesHosted = await Uow.Repository<Game>()
                 .GetQueryable()
                 .CountAsync(g => g.HostUserId == user.Id);
-            var gamesJoined = await _uow.Repository<GameParticipant>()
+            var gamesJoined = await Uow.Repository<GameParticipant>()
                 .GetQueryable()
                 .CountAsync(p => p.UserId == user.Id);
 
@@ -328,14 +328,14 @@ public class AdminService : IAdminService
 
     public async Task<UserDto?> GetUserByIdAsync(string userId)
     {
-        var user = await _userManager.FindByIdAsync(userId);
+        var user = await UserManager.FindByIdAsync(userId);
         if (user == null) return null;
 
-        var roles = await _userManager.GetRolesAsync(user);
-        var gamesHosted = await _uow.Repository<Game>()
+        var roles = await UserManager.GetRolesAsync(user);
+        var gamesHosted = await Uow.Repository<Game>()
             .GetQueryable()
             .CountAsync(g => g.HostUserId == user.Id);
-        var gamesJoined = await _uow.Repository<GameParticipant>()
+        var gamesJoined = await Uow.Repository<GameParticipant>()
             .GetQueryable()
             .CountAsync(p => p.UserId == user.Id);
 
@@ -354,36 +354,36 @@ public class AdminService : IAdminService
 
     public async Task<bool> DeactivateUserAsync(string userId)
     {
-        var user = await _userManager.FindByIdAsync(userId);
+        var user = await UserManager.FindByIdAsync(userId);
         if (user == null) return false;
 
         // Lockout until far future (effectively disable)
-        await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
+        await UserManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
         return true;
     }
 
     public async Task<bool> ActivateUserAsync(string userId)
     {
-        var user = await _userManager.FindByIdAsync(userId);
+        var user = await UserManager.FindByIdAsync(userId);
         if (user == null) return false;
 
-        await _userManager.SetLockoutEndDateAsync(user, null);
+        await UserManager.SetLockoutEndDateAsync(user, null);
         return true;
     }
 
     public async Task<bool> ChangeUserRoleAsync(string userId, string role)
     {
-        var user = await _userManager.FindByIdAsync(userId);
+        var user = await UserManager.FindByIdAsync(userId);
         if (user == null) return false;
 
-        if (!await _roleManager.RoleExistsAsync(role))
+        if (!await RoleManager.RoleExistsAsync(role))
         {
             throw new InvalidOperationException($"Role '{role}' does not exist");
         }
 
-        var currentRoles = await _userManager.GetRolesAsync(user);
-        await _userManager.RemoveFromRolesAsync(user, currentRoles);
-        await _userManager.AddToRoleAsync(user, role);
+        var currentRoles = await UserManager.GetRolesAsync(user);
+        await UserManager.RemoveFromRolesAsync(user, currentRoles);
+        await UserManager.AddToRoleAsync(user, role);
 
         return true;
     }
@@ -392,15 +392,15 @@ public class AdminService : IAdminService
 
     public async Task<AdminStatsDto> GetStatisticsAsync()
     {
-        var totalUsers = _userManager.Users.Count();
-        var activeUsers = _userManager.Users.Count(u => u.LockoutEnd == null || u.LockoutEnd < DateTime.UtcNow);
+        var totalUsers = UserManager.Users.Count();
+        var activeUsers = UserManager.Users.Count(u => u.LockoutEnd == null || u.LockoutEnd < DateTime.UtcNow);
 
-        var games = await _uow.Repository<Game>().GetAllAsync();
+        var games = await Uow.Repository<Game>().GetAllAsync();
         var totalGames = games.Count();
         var upcomingGames = games.Count(g => g.DateTime > DateTime.UtcNow && g.Status != GameStatus.Cancelled);
 
-        var sports = await _uow.Repository<Sport>().GetAllAsync();
-        var venues = await _uow.Repository<Venue>().GetAllAsync();
+        var sports = await Uow.Repository<Sport>().GetAllAsync();
+        var venues = await Uow.Repository<Venue>().GetAllAsync();
 
         // Games by sport
         var gamesBySport = games

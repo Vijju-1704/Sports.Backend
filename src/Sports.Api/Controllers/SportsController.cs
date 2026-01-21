@@ -6,17 +6,17 @@ using Sports.Application.Interfaces;
 [ApiController]
 public class SportsController : ControllerBase
 {
-    private readonly IAdminService _adminService;
+    private readonly IAdminService AdminService;
 
     public SportsController(IAdminService adminService)
     {
-        _adminService = adminService;
+        AdminService = adminService;
     }
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<SportDto>>> GetAll()
     {
-        var sports = await _adminService.GetAllSportsAsync();
+        var sports = await AdminService.GetAllSportsAsync();
         return Ok(sports);
     }
 }

@@ -12,11 +12,11 @@ namespace Sports.Api.Controllers;
 [Authorize]
 public class NotificationsController : ControllerBase
 {
-    private readonly INotificationService _notificationService;
+    private readonly INotificationService NotificationService;
 
     public NotificationsController(INotificationService notificationService)
     {
-        _notificationService = notificationService;
+        NotificationService = notificationService;
     }
 
     [HttpGet]
@@ -25,7 +25,7 @@ public class NotificationsController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        var notifications = await _notificationService.GetUserNotificationsAsync(userId, unreadOnly);
+        var notifications = await NotificationService.GetUserNotificationsAsync(userId, unreadOnly);
         return Ok(notifications);
     }
 
@@ -35,14 +35,14 @@ public class NotificationsController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        var count = await _notificationService.GetUnreadCountAsync(userId);
+        var count = await NotificationService.GetUnreadCountAsync(userId);
         return Ok(new { count });
     }
 
     [HttpPost("{id}/read")]
     public async Task<IActionResult> MarkAsRead(int id)
     {
-        var result = await _notificationService.MarkAsReadAsync(id);
+        var result = await NotificationService.MarkAsReadAsync(id);
         if (!result) return NotFound();
 
         return Ok(new { message = "Notification marked as read" });
@@ -54,7 +54,7 @@ public class NotificationsController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        await _notificationService.MarkAllAsReadAsync(userId);
+        await NotificationService.MarkAllAsReadAsync(userId);
         return Ok(new { message = "All notifications marked as read" });
     }
 
@@ -64,7 +64,7 @@ public class NotificationsController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        var result = await _notificationService.DeleteNotificationAsync(id, userId);
+        var result = await NotificationService.DeleteNotificationAsync(id, userId);
         if (!result) return NotFound();
 
         return Ok(new { message = "Notification deleted" });
@@ -76,7 +76,7 @@ public class NotificationsController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        await _notificationService.DeleteAllNotificationsAsync(userId);
+        await NotificationService.DeleteAllNotificationsAsync(userId);
         return Ok(new { message = "All notifications deleted" });
     }
 }

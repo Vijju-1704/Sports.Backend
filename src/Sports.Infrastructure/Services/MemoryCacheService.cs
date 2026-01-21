@@ -6,33 +6,33 @@ namespace Sports.Infrastructure.Services;
 
 public class MemoryCacheService : ICacheService
 {
-    private readonly IMemoryCache _cache;
-    private readonly ILogger<MemoryCacheService> _logger;
-    private static readonly HashSet<string> _cacheKeys = new();
-    private static readonly object _lock = new();
+    private readonly IMemoryCache Cache;
+    private readonly ILogger<MemoryCacheService> Logger;
+    private static readonly HashSet<string> CacheKeys = new();
+    private static readonly object Lock = new();
 
     public MemoryCacheService(IMemoryCache cache, ILogger<MemoryCacheService> logger)
     {
-        _cache = cache;
-        _logger = logger;
+        Cache = cache;
+        Logger = logger;
     }
 
     public Task<T?> GetAsync<T>(string key)
     {
         try
         {
-            if (_cache.TryGetValue(key, out T? value))
+            if (Cache.TryGetValue(key, out T? value))
             {
-                _logger.LogDebug("Cache HIT for key: {Key}", key);
+                Logger.LogDebug("Cache HIT for key: {Key}", key);
                 return Task.FromResult(value);
             }
 
-            _logger.LogDebug("Cache MISS for key: {Key}", key);
+            Logger.LogDebug("Cache MISS for key: {Key}", key);
             return Task.FromResult<T?>(default);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving from cache: {Key}", key);
+            Logger.LogError(ex, "Error retrieving from cache: {Key}", key);
             return Task.FromResult<T?>(default);
         }
     }
@@ -49,25 +49,25 @@ public class MemoryCacheService : ICacheService
 
             options.RegisterPostEvictionCallback((k, v, r, s) =>
             {
-                lock (_lock)
+                lock (Lock)
                 {
-                    _cacheKeys.Remove(k.ToString()!);
+                    CacheKeys.Remove(k.ToString()!);
                 }
-                _logger.LogDebug("Cache entry evicted: {Key}, Reason: {Reason}", k, r);
+                Logger.LogDebug("Cache entry evicted: {Key}, Reason: {Reason}", k, r);
             });
 
-            _cache.Set(key, value, options);
+            Cache.Set(key, value, options);
 
-            lock (_lock)
+            lock (Lock)
             {
-                _cacheKeys.Add(key);
+                CacheKeys.Add(key);
             }
 
-            _logger.LogDebug("Cache SET for key: {Key}", key);
+            Logger.LogDebug("Cache SET for key: {Key}", key);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error setting cache: {Key}", key);
+            Logger.LogError(ex, "Error setting cache: {Key}", key);
         }
 
         return Task.CompletedTask;
@@ -77,18 +77,18 @@ public class MemoryCacheService : ICacheService
     {
         try
         {
-            _cache.Remove(key);
+            Cache.Remove(key);
             
-            lock (_lock)
+            lock (Lock)
             {
-                _cacheKeys.Remove(key);
+                CacheKeys.Remove(key);
             }
 
-            _logger.LogDebug("Cache REMOVED for key: {Key}", key);
+            Logger.LogDebug("Cache REMOVED for key: {Key}", key);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error removing from cache: {Key}", key);
+            Logger.LogError(ex, "Error removing from cache: {Key}", key);
         }
 
         return Task.CompletedTask;
@@ -100,29 +100,29 @@ public class MemoryCacheService : ICacheService
         {
             List<string> keysToRemove;
             
-            lock (_lock)
+            lock (Lock)
             {
-                keysToRemove = _cacheKeys.Where(k => k.StartsWith(prefix)).ToList();
+                keysToRemove = CacheKeys.Where(k => k.StartsWith(prefix)).ToList();
             }
 
             foreach (var key in keysToRemove)
             {
-                _cache.Remove(key);
+                Cache.Remove(key);
             }
 
-            lock (_lock)
+            lock (Lock)
             {
                 foreach (var key in keysToRemove)
                 {
-                    _cacheKeys.Remove(key);
+                    CacheKeys.Remove(key);
                 }
             }
 
-            _logger.LogDebug("Removed {Count} cache entries with prefix: {Prefix}", keysToRemove.Count, prefix);
+            Logger.LogDebug("Removed {Count} cache entries with prefix: {Prefix}", keysToRemove.Count, prefix);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error removing cache by prefix: {Prefix}", prefix);
+            Logger.LogError(ex, "Error removing cache by prefix: {Prefix}", prefix);
         }
 
         return Task.CompletedTask;

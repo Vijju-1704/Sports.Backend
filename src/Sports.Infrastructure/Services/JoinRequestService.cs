@@ -20,24 +20,24 @@ public interface IJoinRequestService
 
 public class JoinRequestService : IJoinRequestService
 {
-    private readonly IUnitOfWork _uow;
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly INotificationService _notificationService;
+    private readonly IUnitOfWork Uow;
+    private readonly UserManager<ApplicationUser> UserManager;
+    private readonly INotificationService NotificationService;
 
     public JoinRequestService(
         IUnitOfWork uow,
         UserManager<ApplicationUser> userManager,
         INotificationService notificationService)
     {
-        _uow = uow;
-        _userManager = userManager;
-        _notificationService = notificationService;
+        Uow = uow;
+        UserManager = userManager;
+        NotificationService = notificationService;
     }
 
     public async Task<JoinRequestDto> CreateJoinRequestAsync(int gameId, string userId, CreateJoinRequestDto dto)
     {
         // Check if game exists and requires approval
-        var game = await _uow.Repository<Game>().GetByIdAsync(gameId);
+        var game = await Uow.Repository<Game>().GetByIdAsync(gameId);
         if (game == null)
             throw new Exception("Game not found");
 
@@ -45,7 +45,7 @@ public class JoinRequestService : IJoinRequestService
             throw new Exception("This game does not require approval");
 
         // Check if user already has a pending request
-        var existingRequest = await _uow.Repository<JoinRequest>()
+        var existingRequest = await Uow.Repository<JoinRequest>()
             .GetQueryable()
             .FirstOrDefaultAsync(r => r.GameId == gameId && r.UserId == userId && r.Status == RequestStatus.Pending);
 
@@ -53,7 +53,7 @@ public class JoinRequestService : IJoinRequestService
             throw new Exception("You already have a pending request for this game");
 
         // Check if already a participant
-        var isParticipant = await _uow.Repository<GameParticipant>()
+        var isParticipant = await Uow.Repository<GameParticipant>()
             .GetQueryable()
             .AnyAsync(p => p.GameId == gameId && p.UserId == userId);
 
@@ -69,12 +69,12 @@ public class JoinRequestService : IJoinRequestService
             RequestedAt = DateTime.UtcNow
         };
 
-        await _uow.Repository<JoinRequest>().AddAsync(request);
-        await _uow.SaveChangesAsync();
+        await Uow.Repository<JoinRequest>().AddAsync(request);
+        await Uow.SaveChangesAsync();
 
         // Notify host
-        var user = await _userManager.FindByIdAsync(userId);
-        await _notificationService.CreateNotificationAsync(
+        var user = await UserManager.FindByIdAsync(userId);
+        await NotificationService.CreateNotificationAsync(
             game.HostUserId,
             $"{user?.FullName ?? "Someone"} requested to join your game '{game.Title}'",
             NotificationType.JoinRequest,
@@ -87,7 +87,7 @@ public class JoinRequestService : IJoinRequestService
 
     public async Task<IEnumerable<JoinRequestDto>> GetGameJoinRequestsAsync(int gameId)
     {
-        var requests = await _uow.Repository<JoinRequest>()
+        var requests = await Uow.Repository<JoinRequest>()
             .GetQueryable()
             .Include(r => r.Game)
             .Where(r => r.GameId == gameId)
@@ -105,7 +105,7 @@ public class JoinRequestService : IJoinRequestService
 
     public async Task<IEnumerable<JoinRequestDto>> GetUserJoinRequestsAsync(string userId)
     {
-        var requests = await _uow.Repository<JoinRequest>()
+        var requests = await Uow.Repository<JoinRequest>()
             .GetQueryable()
             .Include(r => r.Game)
             .Where(r => r.UserId == userId)
@@ -123,7 +123,7 @@ public class JoinRequestService : IJoinRequestService
 
     public async Task<bool> RespondToJoinRequestAsync(int requestId, string hostUserId, RespondToJoinRequestDto dto)
     {
-        var request = await _uow.Repository<JoinRequest>()
+        var request = await Uow.Repository<JoinRequest>()
             .GetQueryable()
             .Include(r => r.Game)
             .FirstOrDefaultAsync(r => r.RequestId == requestId);
@@ -140,13 +140,13 @@ public class JoinRequestService : IJoinRequestService
         request.RespondedAt = DateTime.UtcNow;
         request.ResponseMessage = dto.ResponseMessage;
 
-        await _uow.SaveChangesAsync();
+        await Uow.SaveChangesAsync();
 
         // If approved, add as participant
         if (dto.Approve)
         {
             // Check capacity
-            var participantCount = await _uow.Repository<GameParticipant>()
+            var participantCount = await Uow.Repository<GameParticipant>()
                 .GetQueryable()
                 .CountAsync(p => p.GameId == request.GameId);
 
@@ -154,9 +154,9 @@ public class JoinRequestService : IJoinRequestService
             {
                 request.Status = RequestStatus.Rejected;
                 request.ResponseMessage = "Game is now full";
-                await _uow.SaveChangesAsync();
+                await Uow.SaveChangesAsync();
 
-                await _notificationService.CreateNotificationAsync(
+                await NotificationService.CreateNotificationAsync(
                     request.UserId,
                     $"Your request to join '{request.Game.Title}' was declined - game is full",
                     NotificationType.Alert
@@ -173,7 +173,7 @@ public class JoinRequestService : IJoinRequestService
                 JoinedAt = DateTime.UtcNow
             };
 
-            await _uow.Repository<GameParticipant>().AddAsync(participant);
+            await Uow.Repository<GameParticipant>().AddAsync(participant);
 
             // Update game status if now full
             if (participantCount + 1 >= request.Game.MaxPlayers)
@@ -181,10 +181,10 @@ public class JoinRequestService : IJoinRequestService
                 request.Game.Status = GameStatus.Full;
             }
 
-            await _uow.SaveChangesAsync();
+            await Uow.SaveChangesAsync();
 
             // Notify user - approved
-            await _notificationService.CreateNotificationAsync(
+            await NotificationService.CreateNotificationAsync(
                 request.UserId,
                 $"Your request to join '{request.Game.Title}' was approved!",
                 NotificationType.Info
@@ -199,7 +199,7 @@ public class JoinRequestService : IJoinRequestService
                 message += $": {dto.ResponseMessage}";
             }
 
-            await _notificationService.CreateNotificationAsync(
+            await NotificationService.CreateNotificationAsync(
                 request.UserId,
                 message,
                 NotificationType.Alert
@@ -211,21 +211,21 @@ public class JoinRequestService : IJoinRequestService
 
     public async Task<bool> CancelJoinRequestAsync(int requestId, string userId)
     {
-        var request = await _uow.Repository<JoinRequest>().GetByIdAsync(requestId);
+        var request = await Uow.Repository<JoinRequest>().GetByIdAsync(requestId);
         if (request == null || request.UserId != userId) return false;
 
         if (request.Status != RequestStatus.Pending) return false;
 
-        _uow.Repository<JoinRequest>().Remove(request);
-        await _uow.SaveChangesAsync();
+        Uow.Repository<JoinRequest>().Remove(request);
+        await Uow.SaveChangesAsync();
 
         return true;
     }
 
     private async Task<JoinRequestDto> GetJoinRequestDtoAsync(JoinRequest request)
     {
-        var user = await _userManager.FindByIdAsync(request.UserId);
-        var game = request.Game ?? await _uow.Repository<Game>().GetByIdAsync(request.GameId);
+        var user = await UserManager.FindByIdAsync(request.UserId);
+        var game = request.Game ?? await Uow.Repository<Game>().GetByIdAsync(request.GameId);
 
         return new JoinRequestDto
         {

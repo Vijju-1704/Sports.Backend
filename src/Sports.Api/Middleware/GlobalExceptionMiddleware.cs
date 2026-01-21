@@ -6,29 +6,29 @@ namespace Sports.Api.Middleware;
 
 public class GlobalExceptionMiddleware
 {
-    private readonly RequestDelegate _next;
-    private readonly ILogger<GlobalExceptionMiddleware> _logger;
-    private readonly IHostEnvironment _env;
+    private readonly RequestDelegate Next;
+    private readonly ILogger<GlobalExceptionMiddleware> Logger;
+    private readonly IHostEnvironment Env;
 
     public GlobalExceptionMiddleware(
         RequestDelegate next, 
         ILogger<GlobalExceptionMiddleware> logger, 
         IHostEnvironment env)
     {
-        _next = next;
-        _logger = logger;
-        _env = env;
+        Next = next;
+        Logger = logger;
+        Env = env;
     }
 
     public async Task InvokeAsync(HttpContext context)
     {
         try
         {
-            await _next(context);
+            await Next(context);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unhandled exception occurred: {Message}", ex.Message);
+            Logger.LogError(ex, "Unhandled exception occurred: {Message}", ex.Message);
             await HandleExceptionAsync(context, ex);
         }
     }
@@ -102,7 +102,7 @@ public class GlobalExceptionMiddleware
             _ => (
                 HttpStatusCode.InternalServerError, 
                 "Internal Server Error", 
-                _env.IsDevelopment() ? ex.Message : "An unexpected error occurred. Please try again later.", 
+                Env.IsDevelopment() ? ex.Message : "An unexpected error occurred. Please try again later.", 
                 null)
         };
 

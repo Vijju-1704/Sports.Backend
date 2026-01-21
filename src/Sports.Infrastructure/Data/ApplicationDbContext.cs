@@ -12,7 +12,7 @@ namespace Sports.Infrastructure.Data;
 
 public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 {
-    private readonly IHttpContextAccessor? _httpContextAccessor;
+    private readonly IHttpContextAccessor? HttpContextAccessor;
 
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
     {
@@ -22,7 +22,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         DbContextOptions<ApplicationDbContext> options, 
         IHttpContextAccessor httpContextAccessor) : base(options)
     {
-        _httpContextAccessor = httpContextAccessor;
+        HttpContextAccessor = httpContextAccessor;
     }
 
     public DbSet<Sport> Sports { get; set; }
@@ -41,7 +41,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
         base.OnModelCreating(builder);
 
-        // ✅ Apply soft delete filter to all ISoftDeletable entities
+        // Apply soft delete filter to all ISoftDeletable entities
         foreach (var entityType in builder.Model.GetEntityTypes())
         {
             if (typeof(ISoftDeletable).IsAssignableFrom(entityType.ClrType))
@@ -72,8 +72,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
         // Seed Employee Directory
         builder.Entity<EmployeeDirectory>().HasData(
-            new EmployeeDirectory { EmployeeId = 1, EmployeeCode = "EMP001", Email = "john.doe@techcorp.com", FullName = "John Doe", Department = "IT", IsActive = true },
-            new EmployeeDirectory { EmployeeId = 2, EmployeeCode = "EMP002", Email = "jane.smith@techcorp.com", FullName = "Jane Smith", Department = "HR", IsActive = true },
+            new EmployeeDirectory { EmployeeId = 1, EmployeeCode = "EMP001", Email = "vijay.rakesh@techcorp.com", FullName = "Vijay Rakesh", Department = "IT", IsActive = true },
+            new EmployeeDirectory { EmployeeId = 2, EmployeeCode = "EMP002", Email = "virat.kohli@techcorp.com", FullName = "Virat Kohli", Department = "HR", IsActive = true },
             new EmployeeDirectory { EmployeeId = 3, EmployeeCode = "EMP003", Email = "admin@techcorp.com", FullName = "System Admin", Department = "Admin", IsActive = true }
         );
     }
@@ -83,12 +83,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     /// </summary>
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        var userId = _httpContextAccessor?.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "system";
+        var userId = HttpContextAccessor?.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "system";
         var auditEntries = new List<AuditEntry>();
 
         foreach (var entry in ChangeTracker.Entries())
         {
-            // ✅ Handle soft delete
+            // Handle soft delete
             if (entry.Entity is ISoftDeletable softDeletable && entry.State == EntityState.Deleted)
             {
                 entry.State = EntityState.Modified;
@@ -97,7 +97,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 softDeletable.DeletedBy = userId;
             }
 
-            // ✅ Track changes for audit (skip AuditLog itself)
+            // Track changes for audit (skip AuditLog itself)
             if (entry.Entity.GetType() == typeof(AuditLog))
                 continue;
 

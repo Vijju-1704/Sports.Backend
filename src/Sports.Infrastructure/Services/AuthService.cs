@@ -10,12 +10,12 @@ namespace Sports.Infrastructure.Services;
 
 public class AuthService : IAuthService
 {
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly SignInManager<ApplicationUser> _signInManager;
-    private readonly JwtTokenGenerator _jwtTokenGenerator;
-    private readonly IGenericRepository<EmployeeDirectory> _employeeRepo;
-    private readonly IGenericRepository<UserEmployeeMap> _mapRepo;
-    private readonly IUnitOfWork _uow;
+    private readonly UserManager<ApplicationUser> UserManager;
+    private readonly SignInManager<ApplicationUser> SignInManager;
+    private readonly JwtTokenGenerator JwtTokenGenerator;
+    private readonly IGenericRepository<EmployeeDirectory> EmployeeRepo;
+    private readonly IGenericRepository<UserEmployeeMap> MapRepo;
+    private readonly IUnitOfWork Uow;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
@@ -23,32 +23,32 @@ public class AuthService : IAuthService
         JwtTokenGenerator jwtTokenGenerator,
         IUnitOfWork uow)
     {
-        _userManager = userManager;
-        _signInManager = signInManager;
-        _jwtTokenGenerator = jwtTokenGenerator;
-        _uow = uow;
-        _employeeRepo = _uow.Repository<EmployeeDirectory>();
-        _mapRepo = _uow.Repository<UserEmployeeMap>();
+        UserManager = userManager;
+        SignInManager = signInManager;
+        JwtTokenGenerator = jwtTokenGenerator;
+        Uow = uow;
+        EmployeeRepo = Uow.Repository<EmployeeDirectory>();
+        MapRepo = Uow.Repository<UserEmployeeMap>();
     }
 
     public async Task<AuthResponseDto> LoginAsync(LoginDto loginDto)
     {
-        var user = await _userManager.FindByEmailAsync(loginDto.Email);
+        var user = await UserManager.FindByEmailAsync(loginDto.Email);
         if (user == null)
         {
             throw new ValidationException("Credentials", "Invalid email or password.");
         }
 
-        // ✅ CHECK IF ACCOUNT IS LOCKED
-        if (await _userManager.IsLockedOutAsync(user))
+        //  CHECK IF ACCOUNT IS LOCKED
+        if (await UserManager.IsLockedOutAsync(user))
         {
-            var lockoutEnd = await _userManager.GetLockoutEndDateAsync(user);
+            var lockoutEnd = await UserManager.GetLockoutEndDateAsync(user);
             var minutesRemaining = (int)(lockoutEnd!.Value - DateTimeOffset.UtcNow).TotalMinutes + 1;
             throw new AccountLockedException(minutesRemaining);
         }
 
-        // ✅ CHECK PASSWORD WITH LOCKOUT ENABLED
-        var result = await _signInManager.CheckPasswordSignInAsync(user, loginDto.Password, lockoutOnFailure: true);
+        //  CHECK PASSWORD WITH LOCKOUT ENABLED
+        var result = await SignInManager.CheckPasswordSignInAsync(user, loginDto.Password, lockoutOnFailure: true);
 
         if (!result.Succeeded)
         {
@@ -58,19 +58,19 @@ public class AuthService : IAuthService
             }
 
             // Get remaining attempts
-            var failedCount = await _userManager.GetAccessFailedCountAsync(user);
+            var failedCount = await UserManager.GetAccessFailedCountAsync(user);
             var remaining = 5 - failedCount;
             
             throw new ValidationException("Credentials", $"Invalid email or password. {remaining} attempt(s) remaining.");
         }
 
-        // ✅ RESET FAILED COUNT ON SUCCESSFUL LOGIN
-        await _userManager.ResetAccessFailedCountAsync(user);
+        //  RESET FAILED COUNT ON SUCCESSFUL LOGIN
+        await UserManager.ResetAccessFailedCountAsync(user);
 
-        var roles = await _userManager.GetRolesAsync(user);
-        var token = _jwtTokenGenerator.GenerateToken(user, roles);
+        var roles = await UserManager.GetRolesAsync(user);
+        var token = JwtTokenGenerator.GenerateToken(user, roles);
 
-        Console.WriteLine($"✅ User logged in: {user.Email} | Roles: {string.Join(", ", roles)}");
+        Console.WriteLine($" User logged in: {user.Email} | Roles: {string.Join(", ", roles)}");
 
         return new AuthResponseDto
         {
@@ -85,7 +85,7 @@ public class AuthService : IAuthService
     public async Task<AuthResponseDto> RegisterAsync(RegisterDto registerDto)
     {
         // 1. Validation: Check if user exists in Employee Directory
-        var employees = await _employeeRepo.FindAsync(
+        var employees = await EmployeeRepo.FindAsync(
             e => e.Email == registerDto.Email && e.EmployeeCode == registerDto.EmployeeCode);
         var employee = employees.FirstOrDefault();
 
@@ -100,7 +100,7 @@ public class AuthService : IAuthService
         }
 
         // Check if user already exists
-        var existingUser = await _userManager.FindByEmailAsync(registerDto.Email);
+        var existingUser = await UserManager.FindByEmailAsync(registerDto.Email);
         if (existingUser != null)
         {
             throw new DuplicateException("A user with this email address already exists.");
@@ -115,7 +115,7 @@ public class AuthService : IAuthService
             DateRegistered = DateTime.UtcNow
         };
 
-        var result = await _userManager.CreateAsync(user, registerDto.Password);
+        var result = await UserManager.CreateAsync(user, registerDto.Password);
         if (!result.Succeeded)
         {
             var errors = result.Errors.ToDictionary(
@@ -125,21 +125,21 @@ public class AuthService : IAuthService
         }
 
         // 3. Link User to Employee
-        await _mapRepo.AddAsync(new UserEmployeeMap
+        await MapRepo.AddAsync(new UserEmployeeMap
         {
             UserId = user.Id,
             EmployeeId = employee.EmployeeId
         });
-        await _uow.SaveChangesAsync();
+        await Uow.SaveChangesAsync();
 
         // 4. Add Default Role
-        await _userManager.AddToRoleAsync(user, "User");
+        await UserManager.AddToRoleAsync(user, "User");
 
         // 5. Generate Token
         var roles = new List<string> { "User" };
-        var token = _jwtTokenGenerator.GenerateToken(user, roles);
+        var token = JwtTokenGenerator.GenerateToken(user, roles);
 
-        Console.WriteLine($"✅ New user registered: {user.Email}");
+        Console.WriteLine($"New user registered: {user.Email}");
 
         return new AuthResponseDto
         {

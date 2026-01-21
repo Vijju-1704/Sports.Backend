@@ -9,11 +9,11 @@ namespace Sports.Infrastructure.Services;
 
 public class NotificationService : INotificationService
 {
-    private readonly IUnitOfWork _uow;
+    private readonly IUnitOfWork Uow;
 
     public NotificationService(IUnitOfWork uow)
     {
-        _uow = uow;
+        Uow = uow;
     }
 
     public async Task CreateNotificationAsync(
@@ -32,15 +32,15 @@ public class NotificationService : INotificationService
             CreatedAt = DateTime.UtcNow
         };
 
-        await _uow.Repository<Notification>().AddAsync(notification);
-        await _uow.SaveChangesAsync();
+        await Uow.Repository<Notification>().AddAsync(notification);
+        await Uow.SaveChangesAsync();
         
         // Note: SignalR notifications are handled at the API layer
     }
 
     public async Task<IEnumerable<NotificationDto>> GetUserNotificationsAsync(string userId, bool unreadOnly = false)
     {
-        var query = _uow.Repository<Notification>()
+        var query = Uow.Repository<Notification>()
             .GetQueryable()
             .Where(n => n.UserId == userId);
 
@@ -67,17 +67,17 @@ public class NotificationService : INotificationService
 
     public async Task<bool> MarkAsReadAsync(int notificationId)
     {
-        var notification = await _uow.Repository<Notification>().GetByIdAsync(notificationId);
+        var notification = await Uow.Repository<Notification>().GetByIdAsync(notificationId);
         if (notification == null) return false;
 
         notification.IsRead = true;
-        await _uow.SaveChangesAsync();
+        await Uow.SaveChangesAsync();
         return true;
     }
 
     public async Task<bool> MarkAllAsReadAsync(string userId)
     {
-        var notifications = await _uow.Repository<Notification>()
+        var notifications = await Uow.Repository<Notification>()
             .FindAsync(n => n.UserId == userId && !n.IsRead);
 
         foreach (var notification in notifications)
@@ -85,37 +85,37 @@ public class NotificationService : INotificationService
             notification.IsRead = true;
         }
 
-        await _uow.SaveChangesAsync();
+        await Uow.SaveChangesAsync();
         return true;
     }
 
     public async Task<bool> DeleteNotificationAsync(int notificationId, string userId)
     {
-        var notification = await _uow.Repository<Notification>().GetByIdAsync(notificationId);
+        var notification = await Uow.Repository<Notification>().GetByIdAsync(notificationId);
         if (notification == null || notification.UserId != userId) return false;
 
-        _uow.Repository<Notification>().Remove(notification);
-        await _uow.SaveChangesAsync();
+        Uow.Repository<Notification>().Remove(notification);
+        await Uow.SaveChangesAsync();
         return true;
     }
 
     public async Task<bool> DeleteAllNotificationsAsync(string userId)
     {
-        var notifications = await _uow.Repository<Notification>()
+        var notifications = await Uow.Repository<Notification>()
             .FindAsync(n => n.UserId == userId);
 
         foreach (var notification in notifications)
         {
-            _uow.Repository<Notification>().Remove(notification);
+            Uow.Repository<Notification>().Remove(notification);
         }
 
-        await _uow.SaveChangesAsync();
+        await Uow.SaveChangesAsync();
         return true;
     }
 
     public async Task<int> GetUnreadCountAsync(string userId)
     {
-        var count = await _uow.Repository<Notification>()
+        var count = await Uow.Repository<Notification>()
             .GetQueryable()
             .CountAsync(n => n.UserId == userId && !n.IsRead);
 

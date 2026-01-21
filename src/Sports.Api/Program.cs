@@ -76,7 +76,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     options.Password.RequireNonAlphanumeric = false;
     options.Password.RequiredLength = 6;
 
-    // ✅ LOCKOUT SETTINGS
+    // LOCKOUT SETTINGS
     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
     options.Lockout.MaxFailedAccessAttempts = 5;
     options.Lockout.AllowedForNewUsers = true;
@@ -116,19 +116,19 @@ builder.Services.AddAuthentication(options =>
             var accessToken = context.Request.Query["access_token"];
             var path = context.HttpContext.Request.Path;
             
-            Console.WriteLine($"🔍 OnMessageReceived - Path: {path}, Token present: {!string.IsNullOrEmpty(accessToken)}");
+            Console.WriteLine($" OnMessageReceived - Path: {path}, Token present: {!string.IsNullOrEmpty(accessToken)}");
             
             if (!string.IsNullOrEmpty(accessToken) &&
                 (path.StartsWithSegments("/chatHub") || path.StartsWithSegments("/notificationHub")))
             {
                 context.Token = accessToken;
-                Console.WriteLine($"✅ Token set for SignalR hub");
+                Console.WriteLine($" Token set for SignalR hub");
             }
             return Task.CompletedTask;
         },
         OnAuthenticationFailed = context =>
         {
-            Console.WriteLine($"❌ JWT Authentication failed: {context.Exception.Message}");
+            Console.WriteLine($" JWT Authentication failed: {context.Exception.Message}");
             return Task.CompletedTask;
         },
         OnTokenValidated = context =>
@@ -136,7 +136,7 @@ builder.Services.AddAuthentication(options =>
             var userEmail = context.Principal?.FindFirst("email")?.Value ?? "Unknown";
             var roles = context.Principal?.FindAll(System.Security.Claims.ClaimTypes.Role)
                 .Select(c => c.Value) ?? Enumerable.Empty<string>();
-            Console.WriteLine($"✅ JWT Token validated for: {userEmail} | Roles: {string.Join(", ", roles)}");
+            Console.WriteLine($" JWT Token validated for: {userEmail} | Roles: {string.Join(", ", roles)}");
             return Task.CompletedTask;
         }
     };
@@ -148,10 +148,10 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowWebApp", policy =>
     {
         policy.WithOrigins(
-                "https://localhost:7001",
-                "http://localhost:5001",
-                "https://localhost:7086",
-                "http://localhost:5086"
+                //"https://localhost:7001",
+                //"http://localhost:5001",
+                "https://localhost:7086"
+                //,"http://localhost:5086"
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
@@ -159,20 +159,20 @@ builder.Services.AddCors(options =>
     });
 });
 
-// ========== ✅ AUTOMAPPER ==========
+// ========== AUTOMAPPER ==========
 builder.Services.AddAutoMapper(cfg =>
 {
     cfg.AddProfile<MappingProfile>();
 });
 
-// ========== ✅ FLUENT VALIDATION ==========
+// ==========  FLUENT VALIDATION ==========
 builder.Services.AddValidatorsFromAssemblyContaining<CreateGameDtoValidator>();
 
-// ========== ✅ MEMORY CACHE ==========
+// ==========  MEMORY CACHE ==========
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ICacheService, MemoryCacheService>();
 
-// ========== ✅ RATE LIMITING ==========
+// ==========  RATE LIMITING ==========
 builder.Services.AddRateLimiter(options =>
 {
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
@@ -218,7 +218,7 @@ builder.Services.AddScoped<IAdminService>(sp =>
     ));
 builder.Services.AddScoped<IChatService, ChatService>();
 
-// ========== ✅ SIGNALR ==========
+// ========== SIGNALR ==========
 builder.Services.AddSignalR();
 
 // ========== BACKGROUND SERVICE ==========
@@ -233,7 +233,7 @@ using (var scope = app.Services.CreateScope())
     var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
     var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
 
-    Console.WriteLine("\n🔧 Setting up database and roles...\n");
+    Console.WriteLine("\n Setting up database and roles...\n");
 
     // Seed Roles
     var roles = new[] { "Admin", "User" };
@@ -242,7 +242,7 @@ using (var scope = app.Services.CreateScope())
         if (!await roleManager.RoleExistsAsync(role))
         {
             await roleManager.CreateAsync(new IdentityRole(role));
-            Console.WriteLine($"✅ Created role: {role}");
+            Console.WriteLine($" Created role: {role}");
         }
     }
 
@@ -263,7 +263,7 @@ using (var scope = app.Services.CreateScope())
         if (result.Succeeded)
         {
             await userManager.AddToRoleAsync(adminUser, "Admin");
-            Console.WriteLine($"✅ Admin user created: {adminEmail}");
+            Console.WriteLine($" Admin user created: {adminEmail}");
 
             var dbContext = services.GetRequiredService<ApplicationDbContext>();
             var adminEmployee = dbContext.EmployeeDirectory.FirstOrDefault(e => e.Email == adminEmail);
@@ -275,12 +275,12 @@ using (var scope = app.Services.CreateScope())
                     EmployeeId = adminEmployee.EmployeeId
                 });
                 await dbContext.SaveChangesAsync();
-                Console.WriteLine($"✅ Admin linked to employee directory");
+                Console.WriteLine($" Admin linked to employee directory");
             }
         }
         else
         {
-            Console.WriteLine($"❌ Failed to create admin: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+            Console.WriteLine($" Failed to create admin: {string.Join(", ", result.Errors.Select(e => e.Description))}");
         }
     }
     else
@@ -289,23 +289,23 @@ using (var scope = app.Services.CreateScope())
         if (!existingRoles.Contains("Admin"))
         {
             await userManager.AddToRoleAsync(adminUser, "Admin");
-            Console.WriteLine($"✅ Added Admin role to existing admin user");
+            Console.WriteLine($" Added Admin role to existing admin user");
         }
-        Console.WriteLine($"✅ Admin user exists: {adminEmail} | Roles: {string.Join(", ", existingRoles)}");
+        Console.WriteLine($" Admin user exists: {adminEmail} | Roles: {string.Join(", ", existingRoles)}");
     }
 
-    Console.WriteLine("\n✨ Database setup complete!\n");
+    Console.WriteLine("\n Database setup complete!\n");
 
     // Run initial status update
     try
     {
         var gameService = services.GetRequiredService<IGameService>();
         await gameService.AutoCompleteGamesAsync();
-        Console.WriteLine("✅ Initial game status check completed\n");
+        Console.WriteLine(" Initial game status check completed\n");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"⚠️ Initial status check failed: {ex.Message}\n");
+        Console.WriteLine($" Initial status check failed: {ex.Message}\n");
     }
 }
 
@@ -320,13 +320,13 @@ app.UseSwaggerUI(options =>
     options.DocumentTitle = "Sports System API";
 });
 
-// ✅ GLOBAL EXCEPTION HANDLER
+// GLOBAL EXCEPTION HANDLER
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
 app.UseHttpsRedirection();
 app.UseCors("AllowWebApp");
 
-// ✅ RATE LIMITER
+// RATE LIMITER
 app.UseRateLimiter();
 
 app.UseAuthentication();
@@ -334,7 +334,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// ✅ MAP SIGNALR HUBS
+// MAP SIGNALR HUBS
 app.MapHub<ChatHub>("/chatHub");
 app.MapHub<NotificationHub>("/notificationHub");
 
@@ -342,23 +342,4 @@ app.MapHub<NotificationHub>("/notificationHub");
 var baseUrl = app.Environment.IsDevelopment()
     ? "https://localhost:7164"
     : "https://yourdomain.com";
-
-Console.WriteLine("\n" + new string('=', 60));
-Console.WriteLine("🚀 SPORTS SYSTEM API - PHASE 2 COMPLETE");
-Console.WriteLine(new string('=', 60));
-Console.WriteLine($"📍 API URL:     {baseUrl}");
-Console.WriteLine($"📚 Swagger UI:  {baseUrl}/swagger");
-Console.WriteLine($"💬 Chat Hub:    {baseUrl}/chatHub");
-Console.WriteLine($"🔔 Notify Hub:  {baseUrl}/notificationHub");
-Console.WriteLine(new string('=', 60));
-Console.WriteLine("\n✅ Phase 1 Features:");
-Console.WriteLine("   ✅ AutoMapper, FluentValidation, Custom Exceptions");
-Console.WriteLine("   ✅ Account Lockout, Rate Limiting, Caching");
-Console.WriteLine("\n✅ Phase 2 Features:");
-Console.WriteLine("   ✅ Pagination - Games paginated API");
-Console.WriteLine("   ✅ SignalR - Real-time chat & notifications");
-Console.WriteLine("   ✅ Soft Delete - Global query filter");
-Console.WriteLine("   ✅ Audit Trail - Automatic change tracking");
-Console.WriteLine(new string('=', 60) + "\n");
-
 app.Run();

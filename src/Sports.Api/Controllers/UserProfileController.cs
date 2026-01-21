@@ -11,11 +11,11 @@ namespace Sports.Api.Controllers;
 [Authorize]
 public class UserProfileController : ControllerBase
 {
-    private readonly IUserProfileService _userProfileService;
+    private readonly IUserProfileService UserProfileService;
 
     public UserProfileController(IUserProfileService userProfileService)
     {
-        _userProfileService = userProfileService;
+        UserProfileService = userProfileService;
     }
 
     [HttpGet("me")]
@@ -24,7 +24,7 @@ public class UserProfileController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        var profile = await _userProfileService.GetUserProfileAsync(userId);
+        var profile = await UserProfileService.GetUserProfileAsync(userId);
         if (profile == null) return NotFound();
 
         return Ok(profile);
@@ -36,7 +36,7 @@ public class UserProfileController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        var result = await _userProfileService.UpdateProfileAsync(userId, dto);
+        var result = await UserProfileService.UpdateProfileAsync(userId, dto);
         if (!result) return BadRequest(new { message = "Failed to update profile" });
 
         return Ok(new { message = "Profile updated successfully" });
@@ -45,7 +45,7 @@ public class UserProfileController : ControllerBase
     [HttpGet("{userId}")]
     public async Task<ActionResult<UserProfileDto>> GetUserProfile(string userId)
     {
-        var profile = await _userProfileService.GetUserProfileAsync(userId);
+        var profile = await UserProfileService.GetUserProfileAsync(userId);
         if (profile == null) return NotFound();
 
         return Ok(profile);
@@ -59,7 +59,7 @@ public class UserProfileController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        var profiles = await _userProfileService.GetUserSportProfilesAsync(userId);
+        var profiles = await UserProfileService.GetUserSportProfilesAsync(userId);
         return Ok(profiles);
     }
 
@@ -71,7 +71,7 @@ public class UserProfileController : ControllerBase
 
         try
         {
-            var profile = await _userProfileService.AddSportProfileAsync(userId, dto);
+            var profile = await UserProfileService.AddSportProfileAsync(userId, dto);
             return Ok(profile);
         }
         catch (Exception ex)
@@ -86,7 +86,7 @@ public class UserProfileController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        var result = await _userProfileService.UpdateSportProfileAsync(userId, profileId, dto);
+        var result = await UserProfileService.UpdateSportProfileAsync(userId, profileId, dto);
         if (!result) return NotFound();
 
         return Ok(new { message = "Sport profile updated" });
@@ -98,7 +98,7 @@ public class UserProfileController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        var result = await _userProfileService.RemoveSportProfileAsync(userId, profileId);
+        var result = await UserProfileService.RemoveSportProfileAsync(userId, profileId);
         if (!result) return NotFound();
 
         return Ok(new { message = "Sport profile removed" });

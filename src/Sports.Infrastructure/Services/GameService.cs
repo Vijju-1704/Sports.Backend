@@ -14,11 +14,11 @@ namespace Sports.Infrastructure.Services;
 
 public class GameService : IGameService
 {
-    private readonly IUnitOfWork _uow;
-    private readonly IMapper _mapper;
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly INotificationService _notificationService;
-    private readonly IJoinRequestService _joinRequestService;
+    private readonly IUnitOfWork Uow;
+    private readonly IMapper Mapper;
+    private readonly UserManager<ApplicationUser> UserManager;
+    private readonly INotificationService NotificationService;
+    private readonly IJoinRequestService JoinRequestService;
 
     public GameService(
         IUnitOfWork uow,
@@ -27,11 +27,11 @@ public class GameService : IGameService
         INotificationService notificationService,
         IJoinRequestService joinRequestService)
     {
-        _uow = uow;
-        _mapper = mapper;
-        _userManager = userManager;
-        _notificationService = notificationService;
-        _joinRequestService = joinRequestService;
+        Uow = uow;
+        Mapper = mapper;
+        UserManager = userManager;
+        NotificationService = notificationService;
+        JoinRequestService = joinRequestService;
     }
 
     public async Task<IEnumerable<GameDto>> GetAllGamesAsync(
@@ -40,7 +40,7 @@ public class GameService : IGameService
         int? sportId = null,
         string? city = null)
     {
-        var query = _uow.Repository<Game>().GetQueryable();
+        var query = Uow.Repository<Game>().GetQueryable();
 
         // Only show active games
         query = query.Where(g => g.Status == GameStatus.Open ||
@@ -86,13 +86,13 @@ public class GameService : IGameService
         // Auto-update statuses
         await UpdateGameStatusesAsync(games);
 
-        // ✅ Use AutoMapper
-        var gameDtos = _mapper.Map<List<GameDto>>(games);
+        // Use AutoMapper
+        var gameDtos = Mapper.Map<List<GameDto>>(games);
 
         // Set host names (can't be mapped automatically)
         foreach (var dto in gameDtos)
         {
-            var host = await _userManager.FindByIdAsync(dto.HostUserId);
+            var host = await UserManager.FindByIdAsync(dto.HostUserId);
             dto.HostName = host?.FullName ?? "Unknown";
         }
 
@@ -109,7 +109,7 @@ public class GameService : IGameService
         int? sportId = null,
         string? city = null)
     {
-        var query = _uow.Repository<Game>().GetQueryable();
+        var query = Uow.Repository<Game>().GetQueryable();
 
         // Only show active games
         query = query.Where(g => g.Status == GameStatus.Open ||
@@ -156,12 +156,12 @@ public class GameService : IGameService
         await UpdateGameStatusesAsync(games);
 
         // Map to DTOs
-        var gameDtos = _mapper.Map<List<GameDto>>(games);
+        var gameDtos = Mapper.Map<List<GameDto>>(games);
 
         // Set host names
         foreach (var dto in gameDtos)
         {
-            var host = await _userManager.FindByIdAsync(dto.HostUserId);
+            var host = await UserManager.FindByIdAsync(dto.HostUserId);
             dto.HostName = host?.FullName ?? "Unknown";
         }
 
@@ -184,7 +184,7 @@ public class GameService : IGameService
 
     public async Task<GameDetailDto?> GetGameByIdAsync(int id, string? currentUserId = null)
     {
-        var game = await _uow.Repository<Game>()
+        var game = await Uow.Repository<Game>()
             .GetQueryable()
             .Include(g => g.Sport)
             .Include(g => g.Venue)
@@ -198,17 +198,17 @@ public class GameService : IGameService
         // Update status
         await UpdateGameStatusesAsync(new[] { game });
 
-        // ✅ Use AutoMapper
-        var gameDto = _mapper.Map<GameDetailDto>(game);
+        // Use AutoMapper
+        var gameDto = Mapper.Map<GameDetailDto>(game);
 
         // Set host name
-        var host = await _userManager.FindByIdAsync(game.HostUserId);
+        var host = await UserManager.FindByIdAsync(game.HostUserId);
         gameDto.HostName = host?.FullName ?? "Unknown";
 
         // Set participant names and IsHost
         foreach (var participantDto in gameDto.Participants)
         {
-            var user = await _userManager.FindByIdAsync(participantDto.UserId);
+            var user = await UserManager.FindByIdAsync(participantDto.UserId);
             participantDto.UserName = user?.FullName ?? "Unknown";
             participantDto.IsHost = participantDto.UserId == game.HostUserId;
         }
@@ -216,7 +216,7 @@ public class GameService : IGameService
         // Get pending requests
         if (game.RequireApproval)
         {
-            var requests = await _joinRequestService.GetGameJoinRequestsAsync(id);
+            var requests = await JoinRequestService.GetGameJoinRequestsAsync(id);
             gameDto.PendingRequests = requests.Where(r => r.Status == "Pending").ToList();
 
             if (!string.IsNullOrEmpty(currentUserId))
@@ -241,12 +241,12 @@ public class GameService : IGameService
             throw new ValidationException("DateTime", "Game date must be in the future.");
         }
 
-        // ✅ Use AutoMapper
-        var game = _mapper.Map<Game>(createDto);
+        // Use AutoMapper
+        var game = Mapper.Map<Game>(createDto);
         game.HostUserId = hostUserId;
 
-        await _uow.Repository<Game>().AddAsync(game);
-        await _uow.SaveChangesAsync();
+        await Uow.Repository<Game>().AddAsync(game);
+        await Uow.SaveChangesAsync();
 
         // Host auto-joins
         var participant = new GameParticipant
@@ -256,16 +256,16 @@ public class GameService : IGameService
             Status = JoinStatus.Confirmed,
             JoinedAt = DateTime.UtcNow
         };
-        await _uow.Repository<GameParticipant>().AddAsync(participant);
-        await _uow.SaveChangesAsync();
+        await Uow.Repository<GameParticipant>().AddAsync(participant);
+        await Uow.SaveChangesAsync();
 
         var result = await GetGameByIdAsync(game.GameId);
-        return _mapper.Map<GameDto>(result);
+        return Mapper.Map<GameDto>(result);
     }
 
     public async Task<bool> UpdateGameStatusAsync(int gameId, string userId, GameStatus status)
     {
-        var game = await _uow.Repository<Game>().GetByIdAsync(gameId);
+        var game = await Uow.Repository<Game>().GetByIdAsync(gameId);
         
         if (game == null)
             throw new NotFoundException("Game", gameId);
@@ -274,10 +274,10 @@ public class GameService : IGameService
             throw new UnauthorizedException("Only the host can update game status.");
 
         game.Status = status;
-        await _uow.SaveChangesAsync();
+        await Uow.SaveChangesAsync();
 
         // Notify participants
-        var participants = await _uow.Repository<GameParticipant>()
+        var participants = await Uow.Repository<GameParticipant>()
             .FindAsync(p => p.GameId == gameId && p.UserId != userId);
 
         string statusMessage = status switch
@@ -289,7 +289,7 @@ public class GameService : IGameService
 
         foreach (var p in participants)
         {
-            await _notificationService.CreateNotificationAsync(
+            await NotificationService.CreateNotificationAsync(
                 p.UserId,
                 $"Game '{game.Title}' {statusMessage}",
                 NotificationType.Info
@@ -301,7 +301,7 @@ public class GameService : IGameService
 
     public async Task<bool> JoinGameAsync(int gameId, string userId)
     {
-        var game = await _uow.Repository<Game>()
+        var game = await Uow.Repository<Game>()
             .GetQueryable()
             .Include(g => g.Participants)
             .FirstOrDefaultAsync(g => g.GameId == gameId);
@@ -332,17 +332,17 @@ public class GameService : IGameService
             JoinedAt = DateTime.UtcNow
         };
 
-        await _uow.Repository<GameParticipant>().AddAsync(participant);
+        await Uow.Repository<GameParticipant>().AddAsync(participant);
 
         if (game.Participants.Count + 1 >= game.MaxPlayers)
         {
             game.Status = GameStatus.Full;
         }
 
-        await _uow.SaveChangesAsync();
+        await Uow.SaveChangesAsync();
 
-        var user = await _userManager.FindByIdAsync(userId);
-        await _notificationService.CreateNotificationAsync(
+        var user = await UserManager.FindByIdAsync(userId);
+        await NotificationService.CreateNotificationAsync(
             game.HostUserId,
             $"{user?.FullName ?? "Someone"} joined your game '{game.Title}'",
             NotificationType.JoinRequest
@@ -353,7 +353,7 @@ public class GameService : IGameService
 
     public async Task<bool> LeaveGameAsync(int gameId, string userId)
     {
-        var game = await _uow.Repository<Game>()
+        var game = await Uow.Repository<Game>()
             .GetQueryable()
             .Include(g => g.Participants)
             .FirstOrDefaultAsync(g => g.GameId == gameId);
@@ -371,7 +371,7 @@ public class GameService : IGameService
         if (participant == null)
             throw new NotFoundException("You are not a participant in this game.");
 
-        _uow.Repository<GameParticipant>().Remove(participant);
+        Uow.Repository<GameParticipant>().Remove(participant);
 
         // If game was full, reopen it
         if (game.Status == GameStatus.Full && game.Participants.Count - 1 < game.MaxPlayers)
@@ -379,11 +379,11 @@ public class GameService : IGameService
             game.Status = GameStatus.Open;
         }
 
-        await _uow.SaveChangesAsync();
+        await Uow.SaveChangesAsync();
 
         // Notify host
-        var user = await _userManager.FindByIdAsync(userId);
-        await _notificationService.CreateNotificationAsync(
+        var user = await UserManager.FindByIdAsync(userId);
+        await NotificationService.CreateNotificationAsync(
             game.HostUserId,
             $"{user?.FullName ?? "Someone"} left your game '{game.Title}'",
             NotificationType.Info
@@ -394,7 +394,7 @@ public class GameService : IGameService
 
     public async Task<bool> UpdateGameAsync(int gameId, CreateGameDto updateDto, string userId)
     {
-        var game = await _uow.Repository<Game>().GetByIdAsync(gameId);
+        var game = await Uow.Repository<Game>().GetByIdAsync(gameId);
         
         if (game == null)
             throw new NotFoundException("Game", gameId);
@@ -417,14 +417,14 @@ public class GameService : IGameService
         game.CostPerPerson = updateDto.CostPerPerson;
         game.EquipmentNeeded = updateDto.EquipmentNeeded;
 
-        await _uow.SaveChangesAsync();
+        await Uow.SaveChangesAsync();
 
-        var participants = await _uow.Repository<GameParticipant>()
+        var participants = await Uow.Repository<GameParticipant>()
             .FindAsync(p => p.GameId == gameId && p.UserId != userId);
 
         foreach (var p in participants)
         {
-            await _notificationService.CreateNotificationAsync(
+            await NotificationService.CreateNotificationAsync(
                 p.UserId,
                 $"Game '{game.Title}' has been updated by the host.",
                 NotificationType.Info
@@ -436,7 +436,7 @@ public class GameService : IGameService
 
     public async Task<bool> CancelGameAsync(int gameId, string userId)
     {
-        var game = await _uow.Repository<Game>()
+        var game = await Uow.Repository<Game>()
             .GetQueryable()
             .Include(g => g.Participants)
             .FirstOrDefaultAsync(g => g.GameId == gameId);
@@ -448,11 +448,11 @@ public class GameService : IGameService
             throw new UnauthorizedException("Only the host can cancel the game.");
 
         game.Status = GameStatus.Cancelled;
-        await _uow.SaveChangesAsync();
+        await Uow.SaveChangesAsync();
 
         foreach (var p in game.Participants.Where(p => p.UserId != userId))
         {
-            await _notificationService.CreateNotificationAsync(
+            await NotificationService.CreateNotificationAsync(
                 p.UserId,
                 $"Game '{game.Title}' has been cancelled by the host.",
                 NotificationType.GameCancelled
@@ -462,12 +462,12 @@ public class GameService : IGameService
         return true;
     }
 
-    // ✅ Auto-complete old games
+    // Auto-complete old games
     public async Task AutoCompleteGamesAsync()
     {
         var now = DateTime.UtcNow;
 
-        var gamesToComplete = await _uow.Repository<Game>()
+        var gamesToComplete = await Uow.Repository<Game>()
             .GetQueryable()
             .Where(g => (g.Status == GameStatus.Open ||
                         g.Status == GameStatus.Full ||
@@ -483,12 +483,12 @@ public class GameService : IGameService
 
         if (gamesToComplete.Any())
         {
-            await _uow.SaveChangesAsync();
+            await Uow.SaveChangesAsync();
             Console.WriteLine($"✅ Completed {gamesToComplete.Count} games automatically");
         }
     }
 
-    // ✅ Helper method to auto-update game statuses
+    // Helper method to auto-update game statuses
     private async Task UpdateGameStatusesAsync(IEnumerable<Game> games)
     {
         var now = DateTime.UtcNow;
@@ -528,7 +528,7 @@ public class GameService : IGameService
 
         if (hasChanges)
         {
-            await _uow.SaveChangesAsync();
+            await Uow.SaveChangesAsync();
         }
     }
 }

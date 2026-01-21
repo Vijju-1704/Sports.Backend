@@ -10,11 +10,11 @@ namespace Sports.Api.Hubs;
 [Authorize]
 public class NotificationHub : Hub
 {
-    private readonly ILogger<NotificationHub> _logger;
+    private readonly ILogger<NotificationHub> Logger;
 
     public NotificationHub(ILogger<NotificationHub> logger)
     {
-        _logger = logger;
+        Logger = logger;
     }
 
     /// <summary>
@@ -28,7 +28,7 @@ public class NotificationHub : Hub
         {
             // Each user has their own group for targeted notifications
             await Groups.AddToGroupAsync(Context.ConnectionId, $"user_{userId}");
-            _logger.LogInformation("User {UserId} connected to NotificationHub", userId);
+            Logger.LogInformation("User {UserId} connected to NotificationHub", userId);
         }
 
         await base.OnConnectedAsync();
@@ -44,7 +44,7 @@ public class NotificationHub : Hub
         if (!string.IsNullOrEmpty(userId))
         {
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"user_{userId}");
-            _logger.LogInformation("User {UserId} disconnected from NotificationHub", userId);
+            Logger.LogInformation("User {UserId} disconnected from NotificationHub", userId);
         }
 
         await base.OnDisconnectedAsync(exception);
@@ -56,7 +56,7 @@ public class NotificationHub : Hub
     public async Task MarkAsRead(int notificationId)
     {
         var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        _logger.LogInformation("User {UserId} marked notification {NotificationId} as read", userId, notificationId);
+        Logger.LogInformation("User {UserId} marked notification {NotificationId} as read", userId, notificationId);
         
         // Notify the client to update UI
         await Clients.Caller.SendAsync("NotificationRead", notificationId);

@@ -11,21 +11,21 @@ namespace Sports.Infrastructure.Services;
 /// </summary>
 public class GameStatusBackgroundService : BackgroundService
 {
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<GameStatusBackgroundService> _logger;
-    private readonly TimeSpan _interval = TimeSpan.FromMinutes(5); // Run every 5 minutes
+    private readonly IServiceProvider ServiceProvider;
+    private readonly ILogger<GameStatusBackgroundService> Logger;
+    private readonly TimeSpan Interval = TimeSpan.FromMinutes(5); // Run every 5 minutes
 
     public GameStatusBackgroundService(
         IServiceProvider serviceProvider,
         ILogger<GameStatusBackgroundService> logger)
     {
-        _serviceProvider = serviceProvider;
-        _logger = logger;
+        ServiceProvider = serviceProvider;
+        Logger = logger;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("🎮 Game Status Background Service started");
+        Logger.LogInformation("🎮 Game Status Background Service started");
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -35,22 +35,22 @@ public class GameStatusBackgroundService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error updating game statuses");
+                Logger.LogError(ex, "❌ Error updating game statuses");
             }
 
             // Wait for the next interval
-            await Task.Delay(_interval, stoppingToken);
+            await Task.Delay(Interval, stoppingToken);
         }
 
-        _logger.LogInformation("🎮 Game Status Background Service stopped");
+        Logger.LogInformation("🎮 Game Status Background Service stopped");
     }
 
     private async Task UpdateGameStatusesAsync()
     {
-        using var scope = _serviceProvider.CreateScope();
+        using var scope = ServiceProvider.CreateScope();
         var gameService = scope.ServiceProvider.GetRequiredService<IGameService>();
 
-        _logger.LogInformation("🔄 Checking for games that need status updates...");
+        Logger.LogInformation("🔄 Checking for games that need status updates...");
 
         await gameService.AutoCompleteGamesAsync();
     }

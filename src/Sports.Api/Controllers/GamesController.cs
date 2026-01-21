@@ -12,11 +12,11 @@ namespace Sports.Api.Controllers;
 [Authorize]
 public class GamesController : ControllerBase
 {
-    private readonly IGameService _gameService;
+    private readonly IGameService GameService;
 
     public GamesController(IGameService gameService)
     {
-        _gameService = gameService;
+        GameService = gameService;
     }
 
     [HttpGet]
@@ -26,7 +26,7 @@ public class GamesController : ControllerBase
         [FromQuery] int? sportId,
         [FromQuery] string? city)
     {
-        var games = await _gameService.GetAllGamesAsync(search, date, sportId, city);
+        var games = await GameService.GetAllGamesAsync(search, date, sportId, city);
         return Ok(games);
     }
 
@@ -41,14 +41,14 @@ public class GamesController : ControllerBase
         [FromQuery] int? sportId = null,
         [FromQuery] string? city = null)
     {
-        var result = await _gameService.GetGamesPaginatedAsync(page, pageSize, search, sportId, city);
+        var result = await GameService.GetGamesPaginatedAsync(page, pageSize, search, sportId, city);
         return Ok(result);
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<GameDetailDto>> GetById(int id)
     {
-        var game = await _gameService.GetGameByIdAsync(id);
+        var game = await GameService.GetGameByIdAsync(id);
         if (game == null) return NotFound();
         return Ok(game);
     }
@@ -61,7 +61,7 @@ public class GamesController : ControllerBase
 
         try
         {
-            var createdGame = await _gameService.CreateGameAsync(dto, userId);
+            var createdGame = await GameService.CreateGameAsync(dto, userId);
             return CreatedAtAction(nameof(GetById), new { id = createdGame.GameId }, createdGame);
         }
         catch (Exception ex)
@@ -76,7 +76,7 @@ public class GamesController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        var success = await _gameService.UpdateGameAsync(id, dto, userId);
+        var success = await GameService.UpdateGameAsync(id, dto, userId);
         if (!success) return BadRequest("Unable to update game (not found or not host)");
 
         return Ok(new { message = "Game updated" });
@@ -88,7 +88,7 @@ public class GamesController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        var result = await _gameService.JoinGameAsync(id, userId);
+        var result = await GameService.JoinGameAsync(id, userId);
         if (!result) return BadRequest("Unable to join game (Full, Closed, or Already Joined)");
 
         return Ok(new { message = "Joined successfully" });
@@ -101,7 +101,7 @@ public class GamesController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        var result = await _gameService.LeaveGameAsync(id, userId);
+        var result = await GameService.LeaveGameAsync(id, userId);
         if (!result) return BadRequest("Unable to leave game (Not a participant or you are the host)");
 
         return Ok(new { message = "Left game successfully" });
@@ -113,7 +113,7 @@ public class GamesController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        var result = await _gameService.CancelGameAsync(id, userId);
+        var result = await GameService.CancelGameAsync(id, userId);
         if (!result) return BadRequest("Unable to cancel game (Not Authorized or Not Found)");
 
         return Ok(new { message = "Game cancelled" });
@@ -126,7 +126,7 @@ public class GamesController : ControllerBase
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
         var status = Enum.Parse<GameStatus>(dto.Status);
-        var result = await _gameService.UpdateGameStatusAsync(id, userId, status);
+        var result = await GameService.UpdateGameStatusAsync(id, userId, status);
         if (!result) return BadRequest("Unable to update game status");
 
         return Ok(new { message = "Game status updated" });

@@ -9,11 +9,11 @@ using System.Security.Claims;
 [Authorize]
 public class ChatController : ControllerBase
 {
-    private readonly IChatService _chatService;
+    private readonly IChatService ChatService;
 
     public ChatController(IChatService chatService)
     {
-        _chatService = chatService;
+        ChatService = chatService;
     }
 
     [HttpGet("game/{gameId}")]
@@ -22,7 +22,7 @@ public class ChatController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        var messages = await _chatService.GetGameMessagesAsync(gameId, userId);
+        var messages = await ChatService.GetGameMessagesAsync(gameId, userId);
         return Ok(messages);
     }
 
@@ -34,7 +34,7 @@ public class ChatController : ControllerBase
 
         try
         {
-            var message = await _chatService.SendMessageAsync(gameId, userId, dto);
+            var message = await ChatService.SendMessageAsync(gameId, userId, dto);
             return Ok(message);
         }
         catch (UnauthorizedAccessException ex)
@@ -49,7 +49,7 @@ public class ChatController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        var result = await _chatService.DeleteMessageAsync(messageId, userId);
+        var result = await ChatService.DeleteMessageAsync(messageId, userId);
         if (!result) return BadRequest("Unable to delete message");
 
         return Ok(new { message = "Message deleted" });
