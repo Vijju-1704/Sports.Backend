@@ -80,7 +80,7 @@ public class ChatHub : Hub
                 SenderName = message.SenderName,
                 Content = message.Content,
                 Timestamp = message.Timestamp,
-                IsCurrentUser = false // Client will determine this
+                IsCurrentUser = false 
             });
 
             Logger.LogInformation("Message sent in game {GameId} by user {UserId}", gameId, userId);

@@ -4,8 +4,9 @@ public enum SkillLevel
 {
     Beginner = 1,
     Intermediate = 2,
-    Advanced = 3,
-    Expert = 4
+    Amateur = 3,
+    Advanced = 4,
+    Expert = 5
 }
 
 public enum GameStatus
@@ -36,5 +37,6 @@ public enum NotificationType
     Alert = 2,
     Request = 3,
     JoinRequest = 4,
-    GameCancelled = 5
+    GameCancelled = 5,
+    RatingRequest = 6
 }

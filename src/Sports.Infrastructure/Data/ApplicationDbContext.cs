@@ -35,6 +35,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<JoinRequest> JoinRequests { get; set; }
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<ChatMessage> ChatMessages { get; set; }
+    public DbSet<PlayerRating> PlayerRatings { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)

@@ -217,6 +217,7 @@ builder.Services.AddScoped<IAdminService>(sp =>
         sp.GetRequiredService<RoleManager<IdentityRole>>()
     ));
 builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddScoped<IRatingService, RatingService>();
 
 // ========== SIGNALR ==========
 builder.Services.AddSignalR();

@@ -21,9 +21,12 @@ public class UpdateUserProfileDto
 public class UserSportProfileDto
 {
     public int ProfileId { get; set; }
+    public int SportProfileId { get; set; } // Alias for ProfileId
     public int SportId { get; set; }
     public string SportName { get; set; } = string.Empty;
+    public string SportIcon { get; set; } = string.Empty;
     public string SkillLevel { get; set; } = string.Empty;
+    public int SkillLevelValue { get; set; } // Numeric 1-5
     public int ExperienceYears { get; set; }
     public string? PreferredPosition { get; set; }
 }

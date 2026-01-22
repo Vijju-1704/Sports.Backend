@@ -72,6 +72,7 @@ public class UserSportProfile
     public string? PreferredPosition { get; set; }
 }
 
+
 public class JoinRequest
 {
     [Key]
@@ -109,4 +110,23 @@ public class UserEmployeeMap
     public int EmployeeId { get; set; }
     [ForeignKey("EmployeeId")]
     public EmployeeDirectory Employee { get; set; } = null!;
+}
+
+public class PlayerRating
+{
+    [Key]
+    public int PlayerRatingId { get; set; }
+    
+    public int GameId { get; set; }
+    [ForeignKey("GameId")]
+    public Game Game { get; set; } = null!;
+    
+    public string RaterId { get; set; } = string.Empty; // Who gave the rating
+    public string RatedUserId { get; set; } = string.Empty; // Who received the rating
+    
+    public int SkillRating { get; set; } // 1-5 stars
+    public bool WasOnTime { get; set; }
+    public string? Comments { get; set; }
+    
+    public DateTime RatedAt { get; set; } = DateTime.UtcNow;
 }

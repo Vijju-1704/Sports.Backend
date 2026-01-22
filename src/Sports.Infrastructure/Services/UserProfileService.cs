@@ -77,9 +77,12 @@ public class UserProfileService : IUserProfileService
         return profiles.Select(p => new UserSportProfileDto
         {
             ProfileId = p.ProfileId,
+            SportProfileId = p.ProfileId, // Alias
             SportId = p.SportId,
             SportName = p.Sport.Name,
+            SportIcon = p.Sport.IconUrl ?? "🎮",
             SkillLevel = p.SkillLevel.ToString(),
+            SkillLevelValue = (int)p.SkillLevel,
             ExperienceYears = p.ExperienceYears,
             PreferredPosition = p.PreferredPosition
         });
@@ -116,9 +119,12 @@ public class UserProfileService : IUserProfileService
         return new UserSportProfileDto
         {
             ProfileId = profile.ProfileId,
+            SportProfileId = profile.ProfileId,
             SportId = profile.SportId,
             SportName = sport?.Name ?? "Unknown",
+            SportIcon = sport?.IconUrl ?? "🎮",
             SkillLevel = profile.SkillLevel.ToString(),
+            SkillLevelValue = (int)profile.SkillLevel,
             ExperienceYears = profile.ExperienceYears,
             PreferredPosition = profile.PreferredPosition
         };

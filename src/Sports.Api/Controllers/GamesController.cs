@@ -94,7 +94,7 @@ public class GamesController : ControllerBase
         return Ok(new { message = "Joined successfully" });
     }
 
-    // ✅ NEW: Leave Game Feature
+    // Leave Game Feature
     [HttpPost("{id}/leave")]
     public async Task<IActionResult> Leave(int id)
     {
