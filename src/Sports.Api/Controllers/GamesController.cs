@@ -31,6 +31,17 @@ public class GamesController : ControllerBase
     }
 
     /// <summary>
+    /// Get ALL games including past (completed/cancelled) for admin
+    /// </summary>
+    [HttpGet("all")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<IEnumerable<GameDto>>> GetAllIncludingPast()
+    {
+        var games = await GameService.GetAllGamesIncludingPastAsync();
+        return Ok(games);
+    }
+
+    /// <summary>
     /// Get games with pagination
     /// </summary>
     [HttpGet("paginated")]

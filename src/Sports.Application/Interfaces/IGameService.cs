@@ -16,6 +16,11 @@ public interface IGameService
         string? city = null);
 
     /// <summary>
+    /// Get ALL games including completed and cancelled (for admin)
+    /// </summary>
+    Task<IEnumerable<GameDto>> GetAllGamesIncludingPastAsync();
+
+    /// <summary>
     /// Get games with pagination
     /// </summary>
     Task<PaginatedResponse<GameDto>> GetGamesPaginatedAsync(

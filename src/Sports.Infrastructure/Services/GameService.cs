@@ -100,6 +100,31 @@ public class GameService : IGameService
     }
 
     /// <summary>
+    /// Get ALL games including completed and cancelled (for admin)
+    /// </summary>
+    public async Task<IEnumerable<GameDto>> GetAllGamesIncludingPastAsync()
+    {
+        var games = await Uow.Repository<Game>()
+            .GetQueryable()
+            .Include(g => g.Participants)
+            .Include(g => g.Sport)
+            .Include(g => g.Venue)
+            .Include(g => g.JoinRequests)
+            .OrderByDescending(g => g.DateTime)
+            .ToListAsync();
+
+        var gameDtos = Mapper.Map<List<GameDto>>(games);
+
+        foreach (var dto in gameDtos)
+        {
+            var host = await UserManager.FindByIdAsync(dto.HostUserId);
+            dto.HostName = host?.FullName ?? "Unknown";
+        }
+
+        return gameDtos;
+    }
+
+    /// <summary>
     /// Get games with pagination support
     /// </summary>
     public async Task<PaginatedResponse<GameDto>> GetGamesPaginatedAsync(
