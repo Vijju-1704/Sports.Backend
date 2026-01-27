@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -12,8 +12,13 @@ using Sports.Domain.Interfaces;
 using Sports.Infrastructure.Repositories;
 using Sports.Application.Interfaces;
 using Sports.Infrastructure.Services;
+using Sports.Application.Services;
+using Sports.Api.Hubs;
+using Sports.Infrastructure.Services;
+using Sports.Application.Services;
 using Sports.Application.Mappings;
 using Sports.Application.Validators;
+using Sports.Infrastructure.Services;
 using Sports.Application.Services;
 using Sports.Api.Middleware;
 using Sports.Api.Hubs;
@@ -223,6 +228,7 @@ builder.Services.AddScoped<JwtTokenGenerator>();
 // ========== APPLICATION SERVICES ==========
 builder.Services.AddScoped<IJoinRequestService, JoinRequestService>();
 builder.Services.AddScoped<IUserProfileService, UserProfileService>();
+builder.Services.AddScoped<IFriendService, FriendService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IGameService, GameService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
@@ -361,3 +367,6 @@ var baseUrl = app.Environment.IsDevelopment()
     ? "https://localhost:7164"
     : "https://yourdomain.com";
 app.Run();
+
+
+

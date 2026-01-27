@@ -1,4 +1,4 @@
-﻿using Sports.Application.DTOs.UserProfile;
+using Sports.Application.DTOs.UserProfile;
 using Sports.Application.Interfaces;
 using Sports.Domain.Entities;
 using Sports.Domain.Interfaces;
@@ -80,7 +80,7 @@ public class UserProfileService : IUserProfileService
             SportProfileId = p.ProfileId, // Alias
             SportId = p.SportId,
             SportName = p.Sport.Name,
-            SportIcon = p.Sport.IconUrl ?? "🎮",
+            SportIcon = p.Sport.IconUrl ?? "??",
             SkillLevel = p.SkillLevel.ToString(),
             SkillLevelValue = (int)p.SkillLevel,
             ExperienceYears = p.ExperienceYears,
@@ -122,7 +122,7 @@ public class UserProfileService : IUserProfileService
             SportProfileId = profile.ProfileId,
             SportId = profile.SportId,
             SportName = sport?.Name ?? "Unknown",
-            SportIcon = sport?.IconUrl ?? "🎮",
+            SportIcon = sport?.IconUrl ?? "??",
             SkillLevel = profile.SkillLevel.ToString(),
             SkillLevelValue = (int)profile.SkillLevel,
             ExperienceYears = profile.ExperienceYears,
@@ -193,5 +193,27 @@ public class UserProfileService : IUserProfileService
             TotalRatings = 0,
             FavoriteSports = favoriteSports
         };
+    }
+    public async Task<IEnumerable<UserProfileDto>> SearchUsersAsync(string query)
+    {
+        if (string.IsNullOrWhiteSpace(query)) return new List<UserProfileDto>();
+
+        var normalizedQuery = query.ToUpper();
+
+        var users = await UserManager.Users
+            .Where(u => u.FullName.ToUpper().Contains(normalizedQuery) || 
+                        (u.Email != null && u.Email.ToUpper().Contains(normalizedQuery)))
+            .Take(10)
+            .ToListAsync();
+
+        return users.Select(u => new UserProfileDto
+        {
+            UserId = u.Id,
+            FullName = u.FullName,
+            Email = u.Email ?? "",
+            ProfilePictureUrl = null,
+            Bio = null,
+            DateRegistered = u.DateRegistered
+        });
     }
 }

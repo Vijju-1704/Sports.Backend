@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Sports.Domain.Common;
 using Sports.Domain.Entities;
 using Sports.Infrastructure.Identity;
+using Sports.Infrastructure.Identity;
 using System.Linq.Expressions;
 using System.Text.Json;
 
@@ -30,6 +31,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<EmployeeDirectory> EmployeeDirectory { get; set; }
     public DbSet<UserEmployeeMap> UserEmployeeMap { get; set; }
     public DbSet<Game> Games { get; set; }
+    public DbSet<Sports.Domain.Entities.Friendship> Friendships { get; set; }
+    public DbSet<Sports.Domain.Entities.ActivityFeed> ActivityFeeds { get; set; }
     public DbSet<GameParticipant> GameParticipants { get; set; }
     public DbSet<UserSportProfile> UserSportProfiles { get; set; }
     public DbSet<JoinRequest> JoinRequests { get; set; }
@@ -181,3 +184,5 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         return auditEntry;
     }
 }
+
+

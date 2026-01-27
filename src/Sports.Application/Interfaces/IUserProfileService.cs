@@ -1,4 +1,4 @@
-﻿using Sports.Application.DTOs.UserProfile;
+using Sports.Application.DTOs.UserProfile;
 
 namespace Sports.Application.Interfaces;
 
@@ -16,4 +16,7 @@ public interface IUserProfileService
 
     // Stats
     Task<UserStatsDto> GetUserStatsAsync(string userId);
+
+    // Search
+    Task<IEnumerable<UserProfileDto>> SearchUsersAsync(string query);
 }

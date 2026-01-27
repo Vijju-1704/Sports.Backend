@@ -1,87 +1,66 @@
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
+using Microsoft.AspNetCore.SignalR;
 using Sports.Application.Interfaces;
+using Sports.Domain.Entities;
+using Sports.Application.DTOs.Chat;
+using System.Security.Claims;
+using System.Text.RegularExpressions;
 
 namespace Sports.Api.Hubs;
 
-/// <summary>
-/// SignalR Hub for real-time game chat
-/// </summary>
 [Authorize]
 public class ChatHub : Hub
 {
-    private readonly IChatService ChatService;
+    private readonly IChatService _chatService;
     private readonly ILogger<ChatHub> Logger;
+    private readonly INotificationService _notificationService;
 
-    public ChatHub(IChatService chatService, ILogger<ChatHub> logger)
+    public ChatHub(IChatService chatService, ILogger<ChatHub> logger, INotificationService notificationService)
     {
-        ChatService = chatService;
+        _chatService = chatService;
         Logger = logger;
+        _notificationService = notificationService;
     }
 
-    /// <summary>
-    /// Join a game's chat room
-    /// </summary>
-    public async Task JoinGameRoom(int gameId)
+    public async Task JoinGameChat(string gameId)
     {
-        var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        await Groups.AddToGroupAsync(Context.ConnectionId, $"game_{gameId}");
-        Logger.LogInformation("User {UserId} joined game room {GameId}", userId, gameId);
-        
-        // Notify others that user joined
-        await Clients.Group($"game_{gameId}").SendAsync("UserJoined", new
-        {
-            UserId = userId,
-            Message = "A user joined the chat"
-        });
+        await Groups.AddToGroupAsync(Context.ConnectionId, gameId);
+        Logger.LogInformation("User {UserId} joined chat group {GameId}", Context.UserIdentifier, gameId);
     }
 
-    /// <summary>
-    /// Leave a game's chat room
-    /// </summary>
-    public async Task LeaveGameRoom(int gameId)
+    public async Task LeaveGameChat(string gameId)
     {
-        var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"game_{gameId}");
-        Logger.LogInformation("User {UserId} left game room {GameId}", userId, gameId);
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, gameId);
+        Logger.LogInformation("User {UserId} left chat group {GameId}", Context.UserIdentifier, gameId);
     }
 
-    /// <summary>
-    /// Send a message to game chat
-    /// </summary>
-    public async Task SendMessage(int gameId, string content)
+    public async Task SendMessage(string gameId, string content)
     {
-        var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        
-        if (string.IsNullOrEmpty(userId))
-        {
-            Logger.LogWarning("Unauthorized send message attempt");
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(content))
-        {
-            return;
-        }
-
         try
         {
-            // Save to database
-            var dto = new Sports.Application.DTOs.Chat.SendMessageDto { Content = content };
-            var message = await ChatService.SendMessageAsync(gameId, userId, dto);
+            var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId)) return;
 
-            // Broadcast to all clients in the game room
-            await Clients.Group($"game_{gameId}").SendAsync("ReceiveMessage", new
+            // Save message
+            var message = await _chatService.SendMessageAsync(int.Parse(gameId), userId, new SendMessageDto { Content = content });
+
+            // Broadcast to group
+            await Clients.Group(gameId).SendAsync("ReceiveMessage", new 
             {
-                MessageId = message.MessageId,
-                GameId = gameId,
-                SenderId = userId,
-                SenderName = message.SenderName,
+                Id = message.MessageId,
+                SenderId = message.SenderUserId,
                 Content = message.Content,
                 Timestamp = message.Timestamp,
-                IsCurrentUser = false 
+                IsCurrentUser = false
             });
+
+            // Handle Mentions: Look for @username patterns
+            var mentions = Regex.Matches(content, @"@(\w+)");
+            foreach (Match match in mentions)
+            {
+                var username = match.Groups[1].Value;
+                Logger.LogInformation("User {UserId} mentioned {MentionedUser}", userId, username);
+            }
 
             Logger.LogInformation("Message sent in game {GameId} by user {UserId}", gameId, userId);
         }
@@ -106,3 +85,4 @@ public class ChatHub : Hub
         await base.OnDisconnectedAsync(exception);
     }
 }
+
