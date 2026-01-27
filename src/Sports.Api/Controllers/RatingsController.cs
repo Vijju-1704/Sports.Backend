@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -6,9 +7,12 @@ using Sports.Application.Interfaces;
 
 namespace Sports.Api.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/v{version:apiVersion}/[controller]")]
+[Route("api/[controller]")]  // Backward compatibility
 [ApiController]
+[ApiVersion("1.0")]
 [Authorize]
+[Produces("application/json")]
 public class RatingsController : ControllerBase
 {
     private readonly IRatingService RatingService;
@@ -22,6 +26,9 @@ public class RatingsController : ControllerBase
     /// Get players to rate for a completed game
     /// </summary>
     [HttpGet("game/{gameId}")]
+    [ProducesResponseType(typeof(RatePlayersDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<RatePlayersDto>> GetPlayersToRate(int gameId)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -38,6 +45,9 @@ public class RatingsController : ControllerBase
     /// Submit ratings for players in a completed game
     /// </summary>
     [HttpPost("game/{gameId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> SubmitRatings(int gameId, [FromBody] SubmitRatingsDto dto)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -56,6 +66,8 @@ public class RatingsController : ControllerBase
     /// Check if user has already rated for a game
     /// </summary>
     [HttpGet("game/{gameId}/hasrated")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<bool>> HasUserRated(int gameId)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -69,6 +81,9 @@ public class RatingsController : ControllerBase
     /// Get all ratings for a game (Admin/viewing)
     /// </summary>
     [HttpGet("game/{gameId}/results")]
+    [ProducesResponseType(typeof(GameRatingsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<GameRatingsDto>> GetGameRatings(int gameId)
     {
         var result = await RatingService.GetGameRatingsAsync(gameId);
@@ -83,6 +98,9 @@ public class RatingsController : ControllerBase
     /// </summary>
     [HttpPost("game/{gameId}/notify")]
     [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> SendRatingNotifications(int gameId)
     {
         await RatingService.SendRatingNotificationsAsync(gameId);

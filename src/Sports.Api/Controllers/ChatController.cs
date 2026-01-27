@@ -1,12 +1,18 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Asp.Versioning;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sports.Application.DTOs.Chat;
 using Sports.Application.Interfaces;
 using System.Security.Claims;
 
-[Route("api/[controller]")]
+namespace Sports.Api.Controllers;
+
+[Route("api/v{version:apiVersion}/[controller]")]
+[Route("api/[controller]")]  // Backward compatibility
 [ApiController]
+[ApiVersion("1.0")]
 [Authorize]
+[Produces("application/json")]
 public class ChatController : ControllerBase
 {
     private readonly IChatService ChatService;
@@ -16,7 +22,12 @@ public class ChatController : ControllerBase
         ChatService = chatService;
     }
 
+    /// <summary>
+    /// Get chat messages for a game
+    /// </summary>
     [HttpGet("game/{gameId}")]
+    [ProducesResponseType(typeof(IEnumerable<ChatMessageDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<IEnumerable<ChatMessageDto>>> GetGameMessages(int gameId)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -26,7 +37,12 @@ public class ChatController : ControllerBase
         return Ok(messages);
     }
 
+    /// <summary>
+    /// Send a chat message in a game
+    /// </summary>
     [HttpPost("game/{gameId}")]
+    [ProducesResponseType(typeof(ChatMessageDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ChatMessageDto>> SendMessage(int gameId, [FromBody] SendMessageDto dto)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -43,7 +59,13 @@ public class ChatController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Delete a chat message
+    /// </summary>
     [HttpDelete("{messageId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> DeleteMessage(int messageId)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);

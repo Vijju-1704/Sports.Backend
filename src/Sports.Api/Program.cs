@@ -17,12 +17,29 @@ using Sports.Application.Validators;
 using Sports.Application.Services;
 using Sports.Api.Middleware;
 using Sports.Api.Hubs;
+using Asp.Versioning;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ========== CONTROLLERS ==========
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+
+// ========== API VERSIONING ==========
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;  // Backward compatible!
+    options.ReportApiVersions = true;
+    options.ApiVersionReader = ApiVersionReader.Combine(
+        new UrlSegmentApiVersionReader(),
+        new HeaderApiVersionReader("X-API-Version")
+    );
+}).AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
 
 // ========== SWAGGER CONFIGURATION ==========
 builder.Services.AddSwaggerGen(options =>

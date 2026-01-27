@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Asp.Versioning;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sports.Application.DTOs.Games;
 using Sports.Application.Interfaces;
@@ -7,9 +8,12 @@ using System.Security.Claims;
 
 namespace Sports.Api.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/v{version:apiVersion}/[controller]")]
+[Route("api/[controller]")]  // Backward compatibility
 [ApiController]
+[ApiVersion("1.0")]
 [Authorize]
+[Produces("application/json")]
 public class GamesController : ControllerBase
 {
     private readonly IGameService GameService;
@@ -19,7 +23,12 @@ public class GamesController : ControllerBase
         GameService = gameService;
     }
 
+    /// <summary>
+    /// Get all active games with optional filtering
+    /// </summary>
     [HttpGet]
+    [ProducesResponseType(typeof(IEnumerable<GameDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<IEnumerable<GameDto>>> GetAll(
         [FromQuery] string? search,
         [FromQuery] DateTime? date,
@@ -35,6 +44,9 @@ public class GamesController : ControllerBase
     /// </summary>
     [HttpGet("all")]
     [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(IEnumerable<GameDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<IEnumerable<GameDto>>> GetAllIncludingPast()
     {
         var games = await GameService.GetAllGamesIncludingPastAsync();
@@ -45,6 +57,8 @@ public class GamesController : ControllerBase
     /// Get games with pagination
     /// </summary>
     [HttpGet("paginated")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult> GetAllPaginated(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 12,
@@ -56,7 +70,13 @@ public class GamesController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Get a specific game by ID
+    /// </summary>
     [HttpGet("{id}")]
+    [ProducesResponseType(typeof(GameDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<GameDetailDto>> GetById(int id)
     {
         var game = await GameService.GetGameByIdAsync(id);
@@ -64,7 +84,13 @@ public class GamesController : ControllerBase
         return Ok(game);
     }
 
+    /// <summary>
+    /// Create a new game
+    /// </summary>
     [HttpPost]
+    [ProducesResponseType(typeof(GameDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<GameDto>> Create([FromBody] CreateGameDto dto)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -81,7 +107,13 @@ public class GamesController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Update an existing game
+    /// </summary>
     [HttpPut("{id}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Update(int id, [FromBody] CreateGameDto dto)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -93,7 +125,13 @@ public class GamesController : ControllerBase
         return Ok(new { message = "Game updated" });
     }
 
+    /// <summary>
+    /// Join a game
+    /// </summary>
     [HttpPost("{id}/join")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Join(int id)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -105,8 +143,13 @@ public class GamesController : ControllerBase
         return Ok(new { message = "Joined successfully" });
     }
 
-    // Leave Game Feature
+    /// <summary>
+    /// Leave a game
+    /// </summary>
     [HttpPost("{id}/leave")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Leave(int id)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -118,7 +161,13 @@ public class GamesController : ControllerBase
         return Ok(new { message = "Left game successfully" });
     }
 
+    /// <summary>
+    /// Cancel a game (host only)
+    /// </summary>
     [HttpPost("{id}/cancel")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Cancel(int id)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -130,7 +179,13 @@ public class GamesController : ControllerBase
         return Ok(new { message = "Game cancelled" });
     }
 
+    /// <summary>
+    /// Update game status
+    /// </summary>
     [HttpPost("{id}/status")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> UpdateGameStatus(int id, [FromBody] UpdateGameStatusDto dto)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);

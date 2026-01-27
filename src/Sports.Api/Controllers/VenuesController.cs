@@ -1,9 +1,15 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Asp.Versioning;
+using Microsoft.AspNetCore.Mvc;
 using Sports.Application.DTOs.Games;
 using Sports.Application.Interfaces;
 
-[Route("api/[controller]")]
+namespace Sports.Api.Controllers;
+
+[Route("api/v{version:apiVersion}/[controller]")]
+[Route("api/[controller]")]  // Backward compatibility
 [ApiController]
+[ApiVersion("1.0")]
+[Produces("application/json")]
 public class VenuesController : ControllerBase
 {
     private readonly IAdminService AdminService;
@@ -13,7 +19,11 @@ public class VenuesController : ControllerBase
         AdminService = adminService;
     }
 
+    /// <summary>
+    /// Get all venues (public endpoint)
+    /// </summary>
     [HttpGet]
+    [ProducesResponseType(typeof(IEnumerable<VenueDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<VenueDto>>> GetAll()
     {
         var venues = await AdminService.GetAllVenuesAsync();
