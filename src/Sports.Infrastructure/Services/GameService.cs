@@ -260,10 +260,10 @@ public class GameService : IGameService
             throw new ValidationException("MaxPlayers", "Max players must be >= Min players.");
         }
 
-        // Be lenient with DateTime - just check it's not significantly in the past
-        if (createDto.DateTime.AddHours(-12) < DateTime.Now)
+        // Allow games scheduled for current time or later (with small buffer for form submission delay)
+        if (createDto.DateTime < DateTime.Now.AddMinutes(-5))
         {
-            throw new ValidationException("DateTime", "Game date must be in the future.");
+            throw new ValidationException("DateTime", "Game date must not be in the past.");
         }
 
         // Use AutoMapper
@@ -303,22 +303,39 @@ public class GameService : IGameService
 
         // Notify participants
         var participants = await Uow.Repository<GameParticipant>()
-            .FindAsync(p => p.GameId == gameId && p.UserId != userId);
+            .FindAsync(p => p.GameId == gameId);
 
-        string statusMessage = status switch
+        // Send appropriate notification based on status
+        if (status == GameStatus.Completed)
         {
-            GameStatus.InProgress => "has started",
-            GameStatus.Completed => "has been completed",
-            _ => $"status changed to {status}"
-        };
+            // Send rating request notifications to all participants (including host)
+            foreach (var p in participants)
+            {
+                await NotificationService.CreateNotificationAsync(
+                    p.UserId,
+                    $"Game '{game.Title}' has been completed! Rate your teammates now.",
+                    NotificationType.RatingRequest,
+                    gameId // Pass the game ID so notification can link to rate players page
+                );
+            }
+        }
+        else
+        {
+            // Send regular status update to other participants (not host)
+            string statusMessage = status switch
+            {
+                GameStatus.InProgress => "has started",
+                _ => $"status changed to {status}"
+            };
 
-        foreach (var p in participants)
-        {
-            await NotificationService.CreateNotificationAsync(
-                p.UserId,
-                $"Game '{game.Title}' {statusMessage}",
-                NotificationType.Info
-            );
+            foreach (var p in participants.Where(p => p.UserId != userId))
+            {
+                await NotificationService.CreateNotificationAsync(
+                    p.UserId,
+                    $"Game '{game.Title}' {statusMessage}",
+                    NotificationType.Info
+                );
+            }
         }
 
         return true;
@@ -494,6 +511,7 @@ public class GameService : IGameService
 
         var gamesToComplete = await Uow.Repository<Game>()
             .GetQueryable()
+            .Include(g => g.Participants)
             .Where(g => (g.Status == GameStatus.Open ||
                         g.Status == GameStatus.Full ||
                         g.Status == GameStatus.InProgress) &&
@@ -504,6 +522,17 @@ public class GameService : IGameService
         {
             game.Status = GameStatus.Completed;
             Console.WriteLine($"✅ Auto-completed game: {game.Title} (ID: {game.GameId})");
+            
+            // Send rating notifications to all participants
+            foreach (var participant in game.Participants)
+            {
+                await NotificationService.CreateNotificationAsync(
+                    participant.UserId,
+                    $"Game '{game.Title}' has been completed! Rate your teammates now.",
+                    NotificationType.RatingRequest,
+                    game.GameId // Pass the game ID
+                );
+            }
         }
 
         if (gamesToComplete.Any())

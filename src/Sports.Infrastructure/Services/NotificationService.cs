@@ -29,7 +29,8 @@ public class NotificationService : INotificationService
             Message = message,
             Type = type,
             IsRead = false,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            RelatedGameId = relatedEntityId // Save the game ID for rating notifications
         };
 
         await Uow.Repository<Notification>().AddAsync(notification);
@@ -61,7 +62,9 @@ public class NotificationService : INotificationService
             Message = n.Message,
             Type = n.Type.ToString(),
             IsRead = n.IsRead,
-            CreatedAt = n.CreatedAt
+            CreatedAt = n.CreatedAt,
+            RelatedEntityId = n.RelatedGameId,
+            RelatedEntityType = n.RelatedGameId.HasValue ? "Game" : null
         });
     }
 

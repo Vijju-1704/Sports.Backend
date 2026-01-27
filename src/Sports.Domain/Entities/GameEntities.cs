@@ -100,6 +100,7 @@ public class Notification
     public NotificationType Type { get; set; }
     public bool IsRead { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public int? RelatedGameId { get; set; } // Link to game for rating notifications
 }
 
 public class UserEmployeeMap
