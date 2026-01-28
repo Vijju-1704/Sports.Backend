@@ -6,7 +6,6 @@ using Sports.Domain.Common;
 using Sports.Domain.Entities;
 using Sports.Infrastructure.Identity;
 using System.Linq.Expressions;
-using System.Text.Json;
 
 namespace Sports.Infrastructure.Data;
 

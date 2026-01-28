@@ -18,11 +18,13 @@ using Sports.Application.Services;
 using Sports.Api.Middleware;
 using Sports.Api.Hubs;
 using Asp.Versioning;
+using FastEndpoints;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ========== CONTROLLERS ==========
 builder.Services.AddControllers();
+builder.Services.AddFastEndpoints();
 builder.Services.AddEndpointsApiExplorer();
 
 // ========== API VERSIONING ==========
@@ -351,7 +353,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
+app.UseFastEndpoints();
 // MAP SIGNALR HUBS
 app.MapHub<ChatHub>("/chatHub");
 app.MapHub<NotificationHub>("/notificationHub");
