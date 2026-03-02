@@ -2,13 +2,11 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Sports.Application.Interfaces;
+using Sports.Domain.Constants;
 
 namespace Sports.Infrastructure.Services;
 
-/// <summary>
-/// Background service that automatically updates game statuses
-/// Runs every 5 minutes to check for games that should be completed
-/// </summary>
+
 public class GameStatusBackgroundService : BackgroundService
 {
     private readonly IServiceProvider ServiceProvider;
@@ -25,7 +23,7 @@ public class GameStatusBackgroundService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        Logger.LogInformation("🎮 Game Status Background Service started");
+        Logger.LogInformation(MessageStrings.GameStatusServiceStarted);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -35,14 +33,14 @@ public class GameStatusBackgroundService : BackgroundService
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "❌ Error updating game statuses");
+                Logger.LogError(ex, MessageStrings.ErrorUpdatingGameStatuses);
             }
 
             // Wait for the next interval
             await Task.Delay(Interval, stoppingToken);
         }
 
-        Logger.LogInformation("🎮 Game Status Background Service stopped");
+        Logger.LogInformation(MessageStrings.GameStatusServiceStopped);
     }
 
     private async Task UpdateGameStatusesAsync()
@@ -50,7 +48,7 @@ public class GameStatusBackgroundService : BackgroundService
         using var scope = ServiceProvider.CreateScope();
         var gameService = scope.ServiceProvider.GetRequiredService<IGameService>();
 
-        Logger.LogInformation("🔄 Checking for games that need status updates...");
+        Logger.LogInformation(MessageStrings.CheckingGameStatusUpdates);
 
         await gameService.AutoCompleteGamesAsync();
     }

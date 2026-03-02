@@ -87,7 +87,6 @@ public class NotificationService : INotificationService
         {
             notification.IsRead = true;
         }
-
         await Uow.SaveChangesAsync();
         return true;
     }

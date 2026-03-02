@@ -6,7 +6,7 @@ using Sports.Application.Interfaces;
 namespace Sports.Api.Controllers;
 
 [Route("api/v{version:apiVersion}/[controller]")]
-[Route("api/[controller]")]  // Backward compatibility
+[Route("api/[controller]")]  
 [ApiController]
 [ApiVersion("1.0")]
 [Produces("application/json")]
@@ -22,6 +22,7 @@ public class SportsController : ControllerBase
     /// <summary>
     /// Get all sports (public endpoint)
     /// </summary>
+    /// <returns></returns>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<SportDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<SportDto>>> GetAll()

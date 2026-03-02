@@ -6,6 +6,7 @@ using Sports.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
 using Sports.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
+using Sports.Domain.Constants;
 
 namespace Sports.Infrastructure.Services;
 
@@ -39,10 +40,10 @@ public class JoinRequestService : IJoinRequestService
         // Check if game exists and requires approval
         var game = await Uow.Repository<Game>().GetByIdAsync(gameId);
         if (game == null)
-            throw new Exception("Game not found");
+            throw new Exception(MessageStrings.GameNotFound);
 
         if (!game.RequireApproval)
-            throw new Exception("This game does not require approval");
+            throw new Exception(MessageStrings.GameDoesNotRequireApproval);
 
         // Check if user already has a pending request
         var existingRequest = await Uow.Repository<JoinRequest>()
@@ -50,7 +51,7 @@ public class JoinRequestService : IJoinRequestService
             .FirstOrDefaultAsync(r => r.GameId == gameId && r.UserId == userId && r.Status == RequestStatus.Pending);
 
         if (existingRequest != null)
-            throw new Exception("You already have a pending request for this game");
+            throw new Exception(MessageStrings.AlreadyHasPendingJoinRequest);
 
         // Check if already a participant
         var isParticipant = await Uow.Repository<GameParticipant>()
@@ -58,7 +59,7 @@ public class JoinRequestService : IJoinRequestService
             .AnyAsync(p => p.GameId == gameId && p.UserId == userId);
 
         if (isParticipant)
-            throw new Exception("You are already a participant in this game");
+            throw new Exception(MessageStrings.AlreadyParticipantInGame);
 
         var request = new JoinRequest
         {
@@ -75,8 +76,7 @@ public class JoinRequestService : IJoinRequestService
         // Notify host
         var user = await UserManager.FindByIdAsync(userId);
         await NotificationService.CreateNotificationAsync(
-            game.HostUserId,
-            $"{user?.FullName ?? "Someone"} requested to join your game '{game.Title}'",
+            game.HostUserId,MessageStrings.UserRequestedToJoin( user?.FullName, game.Title),
             NotificationType.JoinRequest,
             request.RequestId,
             "JoinRequest"
@@ -153,12 +153,11 @@ public class JoinRequestService : IJoinRequestService
             if (participantCount >= request.Game.MaxPlayers)
             {
                 request.Status = RequestStatus.Rejected;
-                request.ResponseMessage = "Game is now full";
+                request.ResponseMessage = MessageStrings.GameIsNowFull;
                 await Uow.SaveChangesAsync();
 
                 await NotificationService.CreateNotificationAsync(
-                    request.UserId,
-                    $"Your request to join '{request.Game.Title}' was declined - game is full",
+                    request.UserId,MessageStrings.JoinRequestDeclinedGameFull(request.Game.Title),
                     NotificationType.Alert
                 );
 
@@ -185,15 +184,14 @@ public class JoinRequestService : IJoinRequestService
 
             // Notify user - approved
             await NotificationService.CreateNotificationAsync(
-                request.UserId,
-                $"Your request to join '{request.Game.Title}' was approved!",
+                request.UserId,MessageStrings.JoinRequestApproved(request.Game.Title),
                 NotificationType.Info
             );
         }
         else
         {
             // Notify user - rejected
-            var message = $"Your request to join '{request.Game.Title}' was declined";
+            var message = MessageStrings.JoinRequestDeclined(request.Game.Title);
             if (!string.IsNullOrEmpty(dto.ResponseMessage))
             {
                 message += $": {dto.ResponseMessage}";
@@ -231,9 +229,9 @@ public class JoinRequestService : IJoinRequestService
         {
             RequestId = request.RequestId,
             GameId = request.GameId,
-            GameTitle = game?.Title ?? "Unknown",
+            GameTitle = game?.Title ?? MessageStrings.Unknown,
             UserId = request.UserId,
-            UserName = user?.FullName ?? "Unknown",
+            UserName = user?.FullName ?? MessageStrings.Unknown,
             Message = request.Message,
             Status = request.Status.ToString(),
             RequestedAt = request.RequestedAt,

@@ -3,12 +3,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sports.Application.DTOs.Notifications;
 using Sports.Application.Interfaces;
+using Sports.Domain.Constants;
 using System.Security.Claims;
 
 namespace Sports.Api.Controllers;
 
 [Route("api/v{version:apiVersion}/[controller]")]
-[Route("api/[controller]")]  // Backward compatibility
+[Route("api/[controller]")]  
 [ApiController]
 [ApiVersion("1.0")]
 [Authorize]
@@ -25,6 +26,10 @@ public class NotificationsController : ControllerBase
     /// <summary>
     /// Get all notifications for the current user with optional pagination
     /// </summary>
+    /// <param name="unreadOnly"></param>
+    /// <param name="pageNumber"></param>
+    /// <param name="pageSize"></param>
+    /// <returns></returns>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<NotificationDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -63,6 +68,7 @@ public class NotificationsController : ControllerBase
     /// <summary>
     /// Get unread notification count
     /// </summary>
+    /// <returns></returns>
     [HttpGet("unread-count")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -78,6 +84,8 @@ public class NotificationsController : ControllerBase
     /// <summary>
     /// Mark a notification as read
     /// </summary>
+    /// <param name="id"></param>
+    /// <returns></returns>
     [HttpPost("{id}/read")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -87,12 +95,13 @@ public class NotificationsController : ControllerBase
         var result = await NotificationService.MarkAsReadAsync(id);
         if (!result) return NotFound();
 
-        return Ok(new { message = "Notification marked as read" });
+        return Ok(new { message = MessageStrings.NotificationMarkedAsRead });
     }
 
     /// <summary>
     /// Mark all notifications as read
     /// </summary>
+    /// <returns></returns>
     [HttpPost("mark-all-read")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -102,12 +111,14 @@ public class NotificationsController : ControllerBase
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
         await NotificationService.MarkAllAsReadAsync(userId);
-        return Ok(new { message = "All notifications marked as read" });
+        return Ok(new { message = MessageStrings.AllNotificationsMarkedAsRead });
     }
 
     /// <summary>
     /// Delete a notification
     /// </summary>
+    /// <param name="id"></param>
+    /// <returns></returns>
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -120,12 +131,13 @@ public class NotificationsController : ControllerBase
         var result = await NotificationService.DeleteNotificationAsync(id, userId);
         if (!result) return NotFound();
 
-        return Ok(new { message = "Notification deleted" });
+        return Ok(new { message = MessageStrings.NotificationDeleted });
     }
 
     /// <summary>
     /// Delete all notifications
     /// </summary>
+    /// <returns></returns>
     [HttpDelete("all")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -135,6 +147,6 @@ public class NotificationsController : ControllerBase
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
         await NotificationService.DeleteAllNotificationsAsync(userId);
-        return Ok(new { message = "All notifications deleted" });
+        return Ok(new { message = MessageStrings.AllNotificationsDeleted });
     }
 }

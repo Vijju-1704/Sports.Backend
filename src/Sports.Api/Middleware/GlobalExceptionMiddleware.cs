@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using Sports.Application.Exceptions;
+using Sports.Domain.Constants;
 
 namespace Sports.Api.Middleware;
 
@@ -28,7 +29,7 @@ public class GlobalExceptionMiddleware
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Unhandled exception occurred: {Message}", ex.Message);
+            Logger.LogError(ex, MessageStrings.UnhandledExceptionLog, ex.Message);
             await HandleExceptionAsync(context, ex);
         }
     }
@@ -41,68 +42,68 @@ public class GlobalExceptionMiddleware
         {
             NotFoundException nf => (
                 HttpStatusCode.NotFound, 
-                "Resource Not Found", 
+                MessageStrings.ResourceNotFoundTitle, 
                 nf.Message, 
                 (Dictionary<string, string[]>?)null),
 
             ValidationException ve => (
                 HttpStatusCode.BadRequest, 
-                "Validation Error", 
+                MessageStrings.ValidationErrorTitle, 
                 ve.Message, 
                 ve.Errors),
 
             UnauthorizedException ue => (
                 HttpStatusCode.Unauthorized, 
-                "Unauthorized", 
+                MessageStrings.UnauthorizedTitle, 
                 ue.Message, 
                 null),
 
             GameFullException => (
                 HttpStatusCode.BadRequest, 
-                "Game Full", 
-                "This game is already full. Please try another game.", 
+                MessageStrings.GameFullTitle, 
+                MessageStrings.GameFullMessage, 
                 null),
 
             AlreadyJoinedException => (
                 HttpStatusCode.BadRequest, 
-                "Already Joined", 
-                "You have already joined this game.", 
+                MessageStrings.AlreadyJoinedTitle, 
+                MessageStrings.AlreadyJoinedMessage, 
                 null),
 
             GameCancelledException => (
                 HttpStatusCode.BadRequest, 
-                "Game Cancelled", 
-                "This game has been cancelled.", 
+                MessageStrings.GameCancelledTitle, 
+                MessageStrings.GameCancelledMessage, 
                 null),
 
             PastGameException => (
                 HttpStatusCode.BadRequest, 
-                "Past Game", 
-                "Cannot perform this action on a game that has already started.", 
+                MessageStrings.PastGameTitle, 
+                MessageStrings.PastGameMessage, 
                 null),
 
             DuplicateException de => (
                 HttpStatusCode.Conflict, 
-                "Duplicate Entry", 
+                MessageStrings.DuplicateEntryTitle, 
                 de.Message, 
                 null),
 
             AccountLockedException ale => (
                 HttpStatusCode.Locked, 
-                "Account Locked", 
+                MessageStrings.AccountLockedTitle, 
                 ale.Message, 
                 null),
 
             EntityInUseException eiu => (
                 HttpStatusCode.Conflict, 
-                "Entity In Use", 
+                MessageStrings.EntityInUseTitle, 
                 eiu.Message, 
                 null),
 
             _ => (
                 HttpStatusCode.InternalServerError, 
-                "Internal Server Error", 
-                Env.IsDevelopment() ? ex.Message : "An unexpected error occurred. Please try again later.", 
+                MessageStrings.InternalServerErrorTitle, 
+                Env.IsDevelopment() ? ex.Message : MessageStrings.GenericUnexpectedError, 
                 null)
         };
 

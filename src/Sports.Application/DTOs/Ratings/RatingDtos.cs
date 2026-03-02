@@ -1,8 +1,6 @@
 namespace Sports.Application.DTOs.Ratings;
 
-/// <summary>
 /// DTO for the rate players page - contains game info and players to rate
-/// </summary>
 public class RatePlayersDto
 {
     public int GameId { get; set; }
@@ -15,9 +13,7 @@ public class RatePlayersDto
     public List<PlayerToRateDto> PlayersToRate { get; set; } = new();
 }
 
-/// <summary>
 /// DTO for individual player that can be rated
-/// </summary>
 public class PlayerToRateDto
 {
     public string UserId { get; set; } = string.Empty;
@@ -26,18 +22,14 @@ public class PlayerToRateDto
     public string? CurrentSkillLevel { get; set; }
 }
 
-/// <summary>
 /// DTO for submitting ratings for multiple players
-/// </summary>
 public class SubmitRatingsDto
 {
     public int GameId { get; set; }
     public List<PlayerRatingDto> Ratings { get; set; } = new();
 }
 
-/// <summary>
 /// DTO for a single player rating
-/// </summary>
 public class PlayerRatingDto
 {
     public string UserId { get; set; } = string.Empty;
@@ -46,9 +38,7 @@ public class PlayerRatingDto
     public string? Comments { get; set; }
 }
 
-/// <summary>
 /// DTO for viewing a rating result
-/// </summary>
 public class PlayerRatingResultDto
 {
     public int RatingId { get; set; }
@@ -60,9 +50,7 @@ public class PlayerRatingResultDto
     public DateTime RatedAt { get; set; }
 }
 
-/// <summary>
 /// DTO for viewing all ratings for a game
-/// </summary>
 public class GameRatingsDto
 {
     public int GameId { get; set; }
@@ -81,9 +69,7 @@ public class GameRatingsDto
     public List<PlayerRatingResultDto> AllRatings { get; set; } = new();
 }
 
-/// <summary>
 /// DTO for player's rating summary within a game
-/// </summary>
 public class PlayerSummaryDto
 {
     public string UserId { get; set; } = string.Empty;

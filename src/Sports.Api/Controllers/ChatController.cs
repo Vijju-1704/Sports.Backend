@@ -3,12 +3,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sports.Application.DTOs.Chat;
 using Sports.Application.Interfaces;
+using Sports.Domain.Constants;
 using System.Security.Claims;
 
 namespace Sports.Api.Controllers;
 
 [Route("api/v{version:apiVersion}/[controller]")]
-[Route("api/[controller]")]  // Backward compatibility
+[Route("api/[controller]")] 
 [ApiController]
 [ApiVersion("1.0")]
 [Authorize]
@@ -23,8 +24,10 @@ public class ChatController : ControllerBase
     }
 
     /// <summary>
-    /// Get chat messages for a game
+    ///     Get chat messages for a game
     /// </summary>
+    /// <param name="gameId"></param>
+    /// <returns></returns>
     [HttpGet("game/{gameId}")]
     [ProducesResponseType(typeof(IEnumerable<ChatMessageDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -36,10 +39,12 @@ public class ChatController : ControllerBase
         var messages = await ChatService.GetGameMessagesAsync(gameId, userId);
         return Ok(messages);
     }
-
     /// <summary>
-    /// Send a chat message in a game
+    ///     Send a chat message in a game
     /// </summary>
+    /// <param name="gameId"></param>
+    /// <param name="dto"></param>
+    /// <returns></returns>
     [HttpPost("game/{gameId}")]
     [ProducesResponseType(typeof(ChatMessageDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -60,8 +65,10 @@ public class ChatController : ControllerBase
     }
 
     /// <summary>
-    /// Delete a chat message
+    ///     Delete a chat message
     /// </summary>
+    /// <param name="messageId"></param>
+    /// <returns></returns>
     [HttpDelete("{messageId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -72,7 +79,7 @@ public class ChatController : ControllerBase
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
         var result = await ChatService.DeleteMessageAsync(messageId, userId);
-        if (!result) return BadRequest("Unable to delete message");
+        if (!result) return BadRequest(MessageStrings.UnableToDeleteMessage);
 
         return Ok(new { message = "Message deleted" });
     }

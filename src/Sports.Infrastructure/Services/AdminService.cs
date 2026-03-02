@@ -6,6 +6,7 @@ using Sports.Application.Interfaces;
 using Sports.Domain.Entities;
 using Sports.Domain.Enums;
 using Sports.Domain.Interfaces;
+using Sports.Domain.Constants;
 using Sports.Infrastructure.Identity;
 
 namespace Sports.Infrastructure.Services;
@@ -99,7 +100,7 @@ public class AdminService : IAdminService
 
         if (gamesUsingSport.Any())
         {
-            throw new InvalidOperationException("Cannot delete sport that is being used in games");
+            throw new InvalidOperationException(MessageStrings.SportInUse);
         }
 
         Uow.Repository<Sport>().Remove(sport);
@@ -190,7 +191,7 @@ public class AdminService : IAdminService
 
         if (gamesUsingVenue.Any())
         {
-            throw new InvalidOperationException("Cannot delete venue that is being used in games");
+            throw new InvalidOperationException(MessageStrings.VenueInUse);
         }
 
         Uow.Repository<Venue>().Remove(venue);
@@ -240,7 +241,7 @@ public class AdminService : IAdminService
 
         if (existing.Any())
         {
-            throw new InvalidOperationException("Employee with this email or code already exists");
+            throw new InvalidOperationException(MessageStrings.EmployeeExists);
         }
 
         var employee = new EmployeeDirectory
@@ -378,7 +379,8 @@ public class AdminService : IAdminService
 
         if (!await RoleManager.RoleExistsAsync(role))
         {
-            throw new InvalidOperationException($"Role '{role}' does not exist");
+            //$"Role '{role}' does not exist" 
+            throw new InvalidOperationException(MessageStrings.RoleDoesNotExist(role));
         }
 
         var currentRoles = await UserManager.GetRolesAsync(user);
@@ -406,7 +408,7 @@ public class AdminService : IAdminService
         var gamesBySport = games
             .GroupBy(g => g.SportId)
             .ToDictionary(
-                g => sports.FirstOrDefault(s => s.SportId == g.Key)?.Name ?? "Unknown",
+                g => sports.FirstOrDefault(s => s.SportId == g.Key)?.Name ?? MessageStrings.Unknown,
                 g => g.Count()
             );
 

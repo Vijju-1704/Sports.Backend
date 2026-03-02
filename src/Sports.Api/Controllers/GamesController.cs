@@ -3,13 +3,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sports.Application.DTOs.Games;
 using Sports.Application.Interfaces;
+using Sports.Domain.Constants;
 using Sports.Domain.Enums;
 using System.Security.Claims;
 
 namespace Sports.Api.Controllers;
 
 [Route("api/v{version:apiVersion}/[controller]")]
-[Route("api/[controller]")]  // Backward compatibility
+[Route("api/[controller]")]  
 [ApiController]
 [ApiVersion("1.0")]
 [Authorize]
@@ -24,8 +25,13 @@ public class GamesController : ControllerBase
     }
 
     /// <summary>
-    /// Get all active games with optional filtering
+    ///     Get all active games with optional filtering
     /// </summary>
+    /// <param name="search"></param>
+    /// <param name="date"></param>
+    /// <param name="sportId"></param>
+    /// <param name="city"></param>
+    /// <returns></returns>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<GameDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -40,8 +46,9 @@ public class GamesController : ControllerBase
     }
 
     /// <summary>
-    /// Get ALL games including past (completed/cancelled) for admin
+    ///     Get ALL games including past (completed/cancelled) for admin
     /// </summary>
+    /// <returns></returns>
     [HttpGet("all")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(IEnumerable<GameDto>), StatusCodes.Status200OK)]
@@ -54,8 +61,14 @@ public class GamesController : ControllerBase
     }
 
     /// <summary>
-    /// Get games with pagination
+    ///     Get games with pagination
     /// </summary>
+    /// <param name="page"></param>
+    /// <param name="pageSize"></param>
+    /// <param name="search"></param>
+    /// <param name="sportId"></param>
+    /// <param name="city"></param>
+    /// <returns></returns>
     [HttpGet("paginated")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -71,8 +84,10 @@ public class GamesController : ControllerBase
     }
 
     /// <summary>
-    /// Get a specific game by ID
+    ///     Get a specific game by ID
     /// </summary>
+    /// <param name="id"></param>
+    /// <returns></returns>
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(GameDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -85,8 +100,10 @@ public class GamesController : ControllerBase
     }
 
     /// <summary>
-    /// Create a new game
+    ///     Create a new game
     /// </summary>
+    /// <param name="dto"></param>
+    /// <returns></returns>
     [HttpPost]
     [ProducesResponseType(typeof(GameDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -108,8 +125,11 @@ public class GamesController : ControllerBase
     }
 
     /// <summary>
-    /// Update an existing game
+    ///     Update an existing game
     /// </summary>
+    /// <param name="id"></param>
+    /// <param name="dto"></param>
+    /// <returns></returns>
     [HttpPut("{id}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -120,14 +140,16 @@ public class GamesController : ControllerBase
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
         var success = await GameService.UpdateGameAsync(id, dto, userId);
-        if (!success) return BadRequest("Unable to update game (not found or not host)");
+        if (!success) return BadRequest(MessageStrings.UnableToUpdateGame);
 
         return Ok(new { message = "Game updated" });
     }
 
     /// <summary>
-    /// Join a game
+    ///     Join a game
     /// </summary>
+    /// <param name="id"></param>
+    /// <returns></returns>
     [HttpPost("{id}/join")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -138,14 +160,16 @@ public class GamesController : ControllerBase
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
         var result = await GameService.JoinGameAsync(id, userId);
-        if (!result) return BadRequest("Unable to join game (Full, Closed, or Already Joined)");
+        if (!result) return BadRequest(MessageStrings.UnableToJoinGame);
 
-        return Ok(new { message = "Joined successfully" });
+        return Ok(new { message = MessageStrings.JoinedSuccessfully });
     }
 
     /// <summary>
-    /// Leave a game
+    ///     Leave a game
     /// </summary>
+    /// <param name="id"></param>
+    /// <returns></returns>
     [HttpPost("{id}/leave")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -156,14 +180,16 @@ public class GamesController : ControllerBase
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
         var result = await GameService.LeaveGameAsync(id, userId);
-        if (!result) return BadRequest("Unable to leave game (Not a participant or you are the host)");
+        if (!result) return BadRequest(MessageStrings.UnableToLeaveGame);
 
-        return Ok(new { message = "Left game successfully" });
+        return Ok(new { message = MessageStrings.LeftGameSuccessfully });
     }
 
     /// <summary>
-    /// Cancel a game (host only)
+    ///     Cancel a game (host only)
     /// </summary>
+    /// <param name="id"></param>
+    /// <returns></returns>
     [HttpPost("{id}/cancel")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -174,14 +200,17 @@ public class GamesController : ControllerBase
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
         var result = await GameService.CancelGameAsync(id, userId);
-        if (!result) return BadRequest("Unable to cancel game (Not Authorized or Not Found)");
+        if (!result) return BadRequest(MessageStrings.UnableToCancelGame);
 
         return Ok(new { message = "Game cancelled" });
     }
 
     /// <summary>
-    /// Update game status
+    ///     Update game status
     /// </summary>
+    /// <param name="id"></param>
+    /// <param name="dto"></param>
+    /// <returns></returns>
     [HttpPost("{id}/status")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -193,8 +222,8 @@ public class GamesController : ControllerBase
 
         var status = Enum.Parse<GameStatus>(dto.Status);
         var result = await GameService.UpdateGameStatusAsync(id, userId, status);
-        if (!result) return BadRequest("Unable to update game status");
+        if (!result) return BadRequest(MessageStrings.UnableToUpdateGameStatus);
 
-        return Ok(new { message = "Game status updated" });
+        return Ok(new { message = MessageStrings.GameStatusUpdated });
     }
 }

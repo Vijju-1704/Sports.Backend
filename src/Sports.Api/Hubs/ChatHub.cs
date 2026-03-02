@@ -2,12 +2,11 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using Sports.Application.Interfaces;
+using Sports.Domain.Constants;
 
 namespace Sports.Api.Hubs;
 
-/// <summary>
-/// SignalR Hub for real-time game chat
-/// </summary>
+
 [Authorize]
 public class ChatHub : Hub
 {
@@ -19,10 +18,7 @@ public class ChatHub : Hub
         ChatService = chatService;
         Logger = logger;
     }
-
-    /// <summary>
-    /// Join a game's chat room
-    /// </summary>
+    
     public async Task JoinGameRoom(int gameId)
     {
         var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -33,30 +29,25 @@ public class ChatHub : Hub
         await Clients.Group($"game_{gameId}").SendAsync("UserJoined", new
         {
             UserId = userId,
-            Message = "A user joined the chat"
+            Message = MessageStrings.UserJoinedChatMessage
         });
     }
 
-    /// <summary>
-    /// Leave a game's chat room
-    /// </summary>
     public async Task LeaveGameRoom(int gameId)
     {
         var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"game_{gameId}");
-        Logger.LogInformation("User {UserId} left game room {GameId}", userId, gameId);
+        Logger.LogInformation(MessageStrings.UserLeftGameRoomLog, userId, gameId);
     }
 
-    /// <summary>
-    /// Send a message to game chat
-    /// </summary>
+    
     public async Task SendMessage(int gameId, string content)
     {
         var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         
         if (string.IsNullOrEmpty(userId))
         {
-            Logger.LogWarning("Unauthorized send message attempt");
+            Logger.LogWarning(MessageStrings.UnauthorizedSendMessageAttempt);
             return;
         }
 
@@ -83,26 +74,26 @@ public class ChatHub : Hub
                 IsCurrentUser = false 
             });
 
-            Logger.LogInformation("Message sent in game {GameId} by user {UserId}", gameId, userId);
+            Logger.LogInformation(MessageStrings.MessageSentLog, gameId, userId);
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error sending message in game {GameId}", gameId);
-            await Clients.Caller.SendAsync("Error", "Failed to send message");
+            Logger.LogError(ex, MessageStrings.ErrorSendingMessageLog, gameId);
+            await Clients.Caller.SendAsync("Error", MessageStrings.FailedToSendMessage);
         }
     }
 
     public override async Task OnConnectedAsync()
     {
         var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        Logger.LogInformation("User {UserId} connected to ChatHub", userId);
+        Logger.LogInformation(MessageStrings.UserConnectedToChatHub, userId);
         await base.OnConnectedAsync();
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        Logger.LogInformation("User {UserId} disconnected from ChatHub", userId);
+        Logger.LogInformation(MessageStrings.UserDisconnectedFromChatHub, userId);
         await base.OnDisconnectedAsync(exception);
     }
 }

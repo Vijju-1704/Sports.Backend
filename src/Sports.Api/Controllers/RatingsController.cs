@@ -4,11 +4,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sports.Application.DTOs.Ratings;
 using Sports.Application.Interfaces;
+using Sports.Domain.Constants;
 
 namespace Sports.Api.Controllers;
 
 [Route("api/v{version:apiVersion}/[controller]")]
-[Route("api/[controller]")]  // Backward compatibility
+[Route("api/[controller]")]  
 [ApiController]
 [ApiVersion("1.0")]
 [Authorize]
@@ -25,6 +26,8 @@ public class RatingsController : ControllerBase
     /// <summary>
     /// Get players to rate for a completed game
     /// </summary>
+    /// <param name="gameId"></param>
+    /// <returns></returns>
     [HttpGet("game/{gameId}")]
     [ProducesResponseType(typeof(RatePlayersDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -44,6 +47,9 @@ public class RatingsController : ControllerBase
     /// <summary>
     /// Submit ratings for players in a completed game
     /// </summary>
+    /// <param name="gameId"></param>
+    /// <param name="dto"></param>
+    /// <returns></returns>
     [HttpPost("game/{gameId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -65,6 +71,8 @@ public class RatingsController : ControllerBase
     /// <summary>
     /// Check if user has already rated for a game
     /// </summary>
+    /// <param name="gameId"></param>
+    /// <returns></returns>
     [HttpGet("game/{gameId}/hasrated")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -80,6 +88,8 @@ public class RatingsController : ControllerBase
     /// <summary>
     /// Get all ratings for a game (Admin/viewing)
     /// </summary>
+    /// <param name="gameId"></param>
+    /// <returns></returns>
     [HttpGet("game/{gameId}/results")]
     [ProducesResponseType(typeof(GameRatingsDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -88,7 +98,7 @@ public class RatingsController : ControllerBase
     {
         var result = await RatingService.GetGameRatingsAsync(gameId);
         if (result == null)
-            return NotFound(new { message = "Game not found" });
+            return NotFound(new { message = MessageStrings.GameNotFound });
 
         return Ok(result);
     }
@@ -96,6 +106,8 @@ public class RatingsController : ControllerBase
     /// <summary>
     /// Send rating notifications for a completed game (Admin only)
     /// </summary>
+    /// <param name="gameId"></param>
+    /// <returns></returns>
     [HttpPost("game/{gameId}/notify")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -104,6 +116,6 @@ public class RatingsController : ControllerBase
     public async Task<IActionResult> SendRatingNotifications(int gameId)
     {
         await RatingService.SendRatingNotificationsAsync(gameId);
-        return Ok(new { message = "Rating notifications sent" });
+        return Ok(new { message = MessageStrings.RatingNotificationsSent });
     }
 }

@@ -78,9 +78,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         );
     }
 
-    /// <summary>
     /// Override SaveChangesAsync to implement soft delete and audit trail
-    /// </summary>
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var userId = HttpContextAccessor?.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "system";

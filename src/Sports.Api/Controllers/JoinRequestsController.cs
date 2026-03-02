@@ -8,7 +8,7 @@ using Sports.Infrastructure.Services;
 namespace Sports.Api.Controllers;
 
 [Route("api/v{version:apiVersion}/[controller]")]
-[Route("api/[controller]")]  // Backward compatibility
+[Route("api/[controller]")] 
 [ApiController]
 [ApiVersion("1.0")]
 [Authorize]
@@ -25,6 +25,9 @@ public class JoinRequestsController : ControllerBase
     /// <summary>
     /// Create a join request for a game
     /// </summary>
+    /// <param name="gameId"></param>
+    /// <param name="dto"></param>
+    /// <returns></returns>
     [HttpPost("game/{gameId}")]
     [ProducesResponseType(typeof(JoinRequestDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -46,8 +49,10 @@ public class JoinRequestsController : ControllerBase
     }
 
     /// <summary>
-    /// Get all join requests for a game
+    ///     Get all join requests for a game
     /// </summary>
+    /// <param name="gameId"></param>
+    /// <returns></returns>
     [HttpGet("game/{gameId}")]
     [ProducesResponseType(typeof(IEnumerable<JoinRequestDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -60,6 +65,7 @@ public class JoinRequestsController : ControllerBase
     /// <summary>
     /// Get current user's join requests
     /// </summary>
+    /// <returns></returns>
     [HttpGet("my-requests")]
     [ProducesResponseType(typeof(IEnumerable<JoinRequestDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -75,6 +81,9 @@ public class JoinRequestsController : ControllerBase
     /// <summary>
     /// Respond to a join request (approve or reject)
     /// </summary>
+    /// <param name="requestId"></param>
+    /// <param name="dto"></param>
+    /// <returns></returns>
     [HttpPost("{requestId}/respond")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -93,6 +102,8 @@ public class JoinRequestsController : ControllerBase
     /// <summary>
     /// Cancel a join request
     /// </summary>
+    /// <param name="requestId"></param>
+    /// <returns></returns>
     [HttpDelete("{requestId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

@@ -14,7 +14,7 @@ public class JwtTokenGenerator
     {
         Configuration = configuration;
     }
-
+    
     public string GenerateToken(ApplicationUser user, IList<string> roles)
     {
         var claims = new List<Claim>

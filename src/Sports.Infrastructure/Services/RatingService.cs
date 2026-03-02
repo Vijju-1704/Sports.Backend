@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Sports.Application.DTOs.Ratings;
 using Sports.Application.Interfaces;
+using Sports.Domain.Constants;
 using Sports.Domain.Entities;
 using Sports.Domain.Enums;
 using Sports.Domain.Interfaces;
@@ -78,7 +79,7 @@ public class RatingService : IRatingService
             SportIcon = game.Sport.IconUrl ?? "🎮",
             GameDate = game.DateTime,
             VenueName = game.Venue.Name,
-            HostName = host?.FullName ?? "Unknown",
+            HostName = host?.FullName ?? MessageStrings.Unknown,
             PlayersToRate = playersToRate
         };
     }
@@ -168,8 +169,8 @@ public class RatingService : IRatingService
             ratingResults.Add(new PlayerRatingResultDto
             {
                 RatingId = rating.PlayerRatingId,
-                RaterName = rater?.FullName ?? "Unknown",
-                RatedPlayerName = ratedUser?.FullName ?? "Unknown",
+                RaterName = rater?.FullName ?? MessageStrings.Unknown,
+                RatedPlayerName = ratedUser?.FullName ?? MessageStrings.Unknown,
                 SkillRating = rating.SkillRating,
                 WasOnTime = rating.WasOnTime,
                 Comments = rating.Comments,
@@ -189,7 +190,7 @@ public class RatingService : IRatingService
             playerSummaries.Add(new PlayerSummaryDto
             {
                 UserId = ratedUserId,
-                PlayerName = user?.FullName ?? "Unknown",
+                PlayerName = user?.FullName ?? MessageStrings.Unknown,
                 IsHost = ratedUserId == game.HostUserId,
                 AverageRating = userRatings.Average(r => r.SkillRating),
                 WasOnTimePercentage = userRatings.Count > 0 
@@ -212,7 +213,7 @@ public class RatingService : IRatingService
             SportIcon = game.Sport.IconUrl ?? "🎮",
             GameDate = game.DateTime,
             VenueName = game.Venue.Name,
-            HostName = host?.FullName ?? "Unknown",
+            HostName = host?.FullName ?? MessageStrings.Unknown,
             TotalParticipants = game.Participants.Count,
             TotalRatingsSubmitted = allRatingsList.Count,
             AverageSkillRating = allRatingsList.Count > 0 ? allRatingsList.Average(r => r.SkillRating) : 0,
@@ -239,7 +240,7 @@ public class RatingService : IRatingService
         {
             await NotificationService.CreateNotificationAsync(
                 participant.UserId,
-                $"Game '{game.Title}' has ended. Rate your teammates!",
+                MessageStrings.GameCompletedRate(game.Title),
                 NotificationType.RatingRequest
             );
         }

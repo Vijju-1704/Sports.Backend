@@ -5,6 +5,7 @@ namespace Sports.Application.Common;
 /// <summary>
 /// Generic paginated list for any entity type
 /// </summary>
+/// <typeparam name="T"></typeparam>
 public class PaginatedList<T>
 {
     public List<T> Items { get; }
@@ -26,6 +27,10 @@ public class PaginatedList<T>
     /// <summary>
     /// Create a paginated list from an IQueryable source
     /// </summary>
+    /// <param name="source"></param>
+    /// <param name="pageNumber"></param>
+    /// <param name="pageSize"></param>
+    /// <returns></returns>
     public static async Task<PaginatedList<T>> CreateAsync(
         IQueryable<T> source, int pageNumber, int pageSize)
     {
@@ -41,6 +46,11 @@ public class PaginatedList<T>
     /// <summary>
     /// Create from an already fetched list (for post-processing scenarios)
     /// </summary>
+    /// <param name="items"></param>
+    /// <param name="count"></param>
+    /// <param name="pageNumber"></param>
+    /// <param name="pageSize"></param>
+    /// <returns></returns>
     public static PaginatedList<T> Create(List<T> items, int count, int pageNumber, int pageSize)
     {
         return new PaginatedList<T>(items, count, pageNumber, pageSize);
@@ -63,6 +73,7 @@ public class PaginationMetadata
 /// <summary>
 /// Wrapper for paginated API responses
 /// </summary>
+/// <typeparam name="T"></typeparam>
 public class PaginatedResponse<T>
 {
     public List<T> Items { get; set; } = new();

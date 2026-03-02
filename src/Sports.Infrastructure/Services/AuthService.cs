@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Sports.Application.DTOs.Auth;
 using Sports.Application.Exceptions;
 using Sports.Application.Interfaces;
+using Sports.Domain.Constants;
 using Sports.Domain.Entities;
 using Sports.Domain.Interfaces;
 using Sports.Infrastructure.Identity;
@@ -30,13 +31,23 @@ public class AuthService : IAuthService
         EmployeeRepo = Uow.Repository<EmployeeDirectory>();
         MapRepo = Uow.Repository<UserEmployeeMap>();
     }
-
+    /// <summary>
+    /// Authenticates a user using the provided login credentials and generates an authentication token upon successful
+    /// login.
+    /// </summary>
+    /// <remarks>The account lockout policy is enforced during authentication. After multiple failed login
+    /// attempts, the account may be temporarily locked. On successful login, the failed access count is
+    /// reset.</remarks>
+    /// <param name="loginDto">An object containing the user's email and password used for authentication. Cannot be null.</param>
+    /// <returns>An AuthResponseDto containing user information and a JWT token if authentication is successful.</returns>
+    /// <exception cref="ValidationException">Thrown if the email or password is invalid, or if the maximum number of failed login attempts is nearly reached.</exception>
+    /// <exception cref="AccountLockedException">Thrown if the user's account is locked due to too many failed login attempts.</exception>
     public async Task<AuthResponseDto> LoginAsync(LoginDto loginDto)
     {
         var user = await UserManager.FindByEmailAsync(loginDto.Email);
         if (user == null)
         {
-            throw new ValidationException("Credentials", "Invalid email or password.");
+            throw new ValidationException("Credentials", MessageStrings.InvalidCredentials);
         }
 
         //  CHECK IF ACCOUNT IS LOCKED
@@ -61,7 +72,7 @@ public class AuthService : IAuthService
             var failedCount = await UserManager.GetAccessFailedCountAsync(user);
             var remaining = 5 - failedCount;
             
-            throw new ValidationException("Credentials", $"Invalid email or password. {remaining} attempt(s) remaining.");
+            throw new ValidationException("Credentials", MessageStrings.InvalidCredentialsWithAttempts(remaining));
         }
 
         //  RESET FAILED COUNT ON SUCCESSFUL LOGIN
@@ -81,7 +92,13 @@ public class AuthService : IAuthService
             Expiration = DateTime.UtcNow.AddHours(1)
         };
     }
-
+    /// <summary>
+    /// RegisterAsync
+    /// </summary>
+    /// <param name="registerDto"></param>
+    /// <returns></returns>
+    /// <exception cref="ValidationException"></exception>
+    /// <exception cref="DuplicateException"></exception>
     public async Task<AuthResponseDto> RegisterAsync(RegisterDto registerDto)
     {
         // 1. Validation: Check if user exists in Employee Directory
@@ -91,19 +108,19 @@ public class AuthService : IAuthService
 
         if (employee == null)
         {
-            throw new ValidationException("EmployeeCode", "Registration failed. Details do not match our Employee Directory.");
+            throw new ValidationException("EmployeeCode", MessageStrings.EmployeeDetailsMismatch);
         }
 
         if (!employee.IsActive)
         {
-            throw new ValidationException("Employee", "Registration failed. Employee is not active.");
+            throw new ValidationException("Employee", MessageStrings.EmployeeInactive );
         }
 
         // Check if user already exists
         var existingUser = await UserManager.FindByEmailAsync(registerDto.Email);
         if (existingUser != null)
         {
-            throw new DuplicateException("A user with this email address already exists.");
+            throw new DuplicateException(MessageStrings.UserAlreadyExists);
         }
 
         // 2. Create Identity User

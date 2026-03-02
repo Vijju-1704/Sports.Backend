@@ -6,6 +6,7 @@ using Sports.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
 using Sports.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
+using Sports.Domain.Constants;
 
 namespace Sports.Infrastructure.Services;
 
@@ -97,7 +98,7 @@ public class UserProfileService : IUserProfileService
 
         if (existing != null)
         {
-            throw new InvalidOperationException("Sport profile already exists for this sport");
+            throw new InvalidOperationException(MessageStrings.SportProfileAlreadyExists);
         }
 
         var skillLevel = Enum.Parse<SkillLevel>(dto.SkillLevel);
@@ -121,7 +122,7 @@ public class UserProfileService : IUserProfileService
             ProfileId = profile.ProfileId,
             SportProfileId = profile.ProfileId,
             SportId = profile.SportId,
-            SportName = sport?.Name ?? "Unknown",
+            SportName = sport?.Name ?? MessageStrings.Unknown,
             SportIcon = sport?.IconUrl ?? "🎮",
             SkillLevel = profile.SkillLevel.ToString(),
             SkillLevelValue = (int)profile.SkillLevel,

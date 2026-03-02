@@ -6,7 +6,7 @@ using Sports.Application.Interfaces;
 namespace Sports.Api.Controllers;
 
 [Route("api/v{version:apiVersion}/[controller]")]
-[Route("api/[controller]")]  // Backward compatibility
+[Route("api/[controller]")] 
 [ApiController]
 [ApiVersion("1.0")]
 [Produces("application/json")]
@@ -20,8 +20,10 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Authenticate user and get JWT token
+    ///   Authenticate user and get JWT token
     /// </summary>
+    /// <param name="loginDto"></param>
+    /// <returns></returns>
     [HttpPost("login")]
     [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -39,8 +41,10 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Register a new user
+    ///    Register a new user
     /// </summary>
+    /// <param name="registerDto"></param>
+    /// <returns></returns>
     [HttpPost("register")]
     [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

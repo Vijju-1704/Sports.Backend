@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Sports.Domain.Entities;
 using Sports.Domain.Interfaces;
 using Sports.Infrastructure.Identity;
+using Sports.Domain.Constants;
 
 public class ChatService : IChatService
 {
@@ -35,7 +36,7 @@ public class ChatService : IChatService
                 MessageId = msg.MessageId,
                 GameId = msg.GameId,
                 SenderUserId = msg.SenderUserId,
-                SenderName = sender?.FullName ?? "Unknown",
+                SenderName = sender?.FullName ?? MessageStrings.Unknown,
                 Content = msg.Content,
                 Timestamp = msg.Timestamp,
                 IsCurrentUser = msg.SenderUserId == currentUserId
@@ -53,7 +54,7 @@ public class ChatService : IChatService
 
         if (!participant.Any())
         {
-            throw new UnauthorizedAccessException("You must be a participant to send messages");
+            throw new UnauthorizedAccessException(MessageStrings.MustBeParticipantToSendMessage);
         }
 
         var message = new ChatMessage
@@ -74,7 +75,7 @@ public class ChatService : IChatService
             MessageId = message.MessageId,
             GameId = message.GameId,
             SenderUserId = message.SenderUserId,
-            SenderName = sender?.FullName ?? "Unknown",
+            SenderName = sender?.FullName ?? MessageStrings.Unknown,
             Content = message.Content,
             Timestamp = message.Timestamp,
             IsCurrentUser = true

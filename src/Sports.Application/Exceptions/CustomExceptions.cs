@@ -1,3 +1,5 @@
+using Sports.Domain.Constants;
+
 namespace Sports.Application.Exceptions;
 
 /// <summary>
@@ -7,7 +9,7 @@ public class NotFoundException : Exception
 {
     public NotFoundException(string message) : base(message) { }
     public NotFoundException(string entityName, object key) 
-        : base($"{entityName} with id '{key}' was not found.") { }
+        : base(MessageStrings.EntityNotFound(entityName, key)) { }
 }
 
 /// <summary>
@@ -18,82 +20,66 @@ public class ValidationException : Exception
     public Dictionary<string, string[]> Errors { get; }
     
     public ValidationException(Dictionary<string, string[]> errors)
-        : base("One or more validation errors occurred.")
+        : base(MessageStrings.ValidationErrorsOccurred)
     {
         Errors = errors;
     }
     
-    public ValidationException(string field, string error) : base("Validation error.")
+    public ValidationException(string field, string error) : base(MessageStrings.ValidationError)
     {
         Errors = new Dictionary<string, string[]> { { field, new[] { error } } };
     }
 }
 
-/// <summary>
-/// Thrown when user is not authorized to perform an action
-/// </summary>
+// Thrown when user is not authorized to perform an action
 public class UnauthorizedException : Exception
 {
-    public UnauthorizedException(string message = "You are not authorized to perform this action.") 
+    public UnauthorizedException(string message = MessageStrings.NotAuthorized)
         : base(message) { }
 }
 
-/// <summary>
-/// Thrown when attempting to join a full game
-/// </summary>
+// Thrown when attempting to join a full game
 public class GameFullException : Exception
 {
-    public GameFullException() : base("This game is already full.") { }
+    public GameFullException() : base(MessageStrings.GameAlreadyFull) { }
 }
 
-/// <summary>
-/// Thrown when attempting to perform action on a cancelled game
-/// </summary>
+// Thrown when attempting to perform action on a cancelled game
 public class GameCancelledException : Exception
 {
-    public GameCancelledException() : base("This game has been cancelled.") { }
+    public GameCancelledException() : base(MessageStrings.ThisGameCancelled) { }
 }
 
-/// <summary>
-/// Thrown when user has already joined a game
-/// </summary>
+// Thrown when user has already joined a game
 public class AlreadyJoinedException : Exception
 {
-    public AlreadyJoinedException() : base("You have already joined this game.") { }
+    public AlreadyJoinedException() : base(MessageStrings.AlreadyJoinedGame) { }
 }
 
-/// <summary>
-/// Thrown when attempting to join a game in the past
-/// </summary>
+// Thrown when attempting to join a game in the past
 public class PastGameException : Exception
 {
-    public PastGameException() : base("Cannot join a game that has already started or ended.") { }
+    public PastGameException() : base(MessageStrings.CannotJoinPastGame) { }
 }
 
-/// <summary>
-/// Thrown when duplicate entity exists
-/// </summary>
+// Thrown when duplicate entity exists
 public class DuplicateException : Exception
 {
     public DuplicateException(string message) : base(message) { }
 }
 
-/// <summary>
-/// Thrown when account is locked due to failed login attempts
-/// </summary>
+// Thrown when account is locked due to failed login attempts
 public class AccountLockedException : Exception
 {
     public int MinutesRemaining { get; }
     public AccountLockedException(int minutesRemaining) 
-        : base($"Account locked due to multiple failed attempts. Try again in {minutesRemaining} minutes.")
+        : base(MessageStrings.AccountLocked(minutesRemaining))
     {
         MinutesRemaining = minutesRemaining;
     }
 }
 
-/// <summary>
-/// Thrown when entity is in use and cannot be deleted
-/// </summary>
+// Thrown when entity is in use and cannot be deleted
 public class EntityInUseException : Exception
 {
     public EntityInUseException(string message) : base(message) { }

@@ -5,6 +5,7 @@ using Sports.Application.Common;
 using Sports.Application.DTOs.Games;
 using Sports.Application.Exceptions;
 using Sports.Application.Interfaces;
+using Sports.Domain.Constants;
 using Sports.Domain.Entities;
 using Sports.Domain.Enums;
 using Sports.Domain.Interfaces;
@@ -93,7 +94,7 @@ public class GameService : IGameService
         foreach (var dto in gameDtos)
         {
             var host = await UserManager.FindByIdAsync(dto.HostUserId);
-            dto.HostName = host?.FullName ?? "Unknown";
+            dto.HostName = host?.FullName ?? MessageStrings.Unknown;
         }
 
         return gameDtos;
@@ -118,7 +119,7 @@ public class GameService : IGameService
         foreach (var dto in gameDtos)
         {
             var host = await UserManager.FindByIdAsync(dto.HostUserId);
-            dto.HostName = host?.FullName ?? "Unknown";
+            dto.HostName = host?.FullName ?? MessageStrings.Unknown;
         }
 
         return gameDtos;
@@ -187,7 +188,7 @@ public class GameService : IGameService
         foreach (var dto in gameDtos)
         {
             var host = await UserManager.FindByIdAsync(dto.HostUserId);
-            dto.HostName = host?.FullName ?? "Unknown";
+            dto.HostName = host?.FullName ?? MessageStrings.Unknown;
         }
 
         // Create paginated response
@@ -228,13 +229,13 @@ public class GameService : IGameService
 
         // Set host name
         var host = await UserManager.FindByIdAsync(game.HostUserId);
-        gameDto.HostName = host?.FullName ?? "Unknown";
+        gameDto.HostName = host?.FullName ?? MessageStrings.Unknown;
 
         // Set participant names and IsHost
         foreach (var participantDto in gameDto.Participants)
         {
             var user = await UserManager.FindByIdAsync(participantDto.UserId);
-            participantDto.UserName = user?.FullName ?? "Unknown";
+            participantDto.UserName = user?.FullName ??MessageStrings.Unknown;
             participantDto.IsHost = participantDto.UserId == game.HostUserId;
         }
 
@@ -257,13 +258,13 @@ public class GameService : IGameService
     {
         if (createDto.MaxPlayers < createDto.MinPlayers)
         {
-            throw new ValidationException("MaxPlayers", "Max players must be >= Min players.");
+            throw new ValidationException("MaxPlayers", MessageStrings.MaxPlayersMustBeGreaterOrEqualMinPlayers);
         }
 
         // Allow games scheduled for current time or later (with small buffer for form submission delay)
         if (createDto.DateTime < DateTime.Now.AddMinutes(-5))
         {
-            throw new ValidationException("DateTime", "Game date must not be in the past.");
+            throw new ValidationException("DateTime", MessageStrings.GameDateInPast);
         }
 
         // Use AutoMapper
@@ -296,7 +297,7 @@ public class GameService : IGameService
             throw new NotFoundException("Game", gameId);
 
         if (game.HostUserId != userId)
-            throw new UnauthorizedException("Only the host can update game status.");
+            throw new UnauthorizedException(MessageStrings.OnlyHostCanUpdateStatus);
 
         game.Status = status;
         await Uow.SaveChangesAsync();
@@ -312,8 +313,8 @@ public class GameService : IGameService
             foreach (var p in participants)
             {
                 await NotificationService.CreateNotificationAsync(
-                    p.UserId,
-                    $"Game '{game.Title}' has been completed! Rate your teammates now.",
+                    p.UserId,MessageStrings.GameCompletedRate(game.Title),
+                   
                     NotificationType.RatingRequest,
                     gameId // Pass the game ID so notification can link to rate players page
                 );
@@ -385,8 +386,7 @@ public class GameService : IGameService
 
         var user = await UserManager.FindByIdAsync(userId);
         await NotificationService.CreateNotificationAsync(
-            game.HostUserId,
-            $"{user?.FullName ?? "Someone"} joined your game '{game.Title}'",
+            game.HostUserId,MessageStrings.UserJoinedGame(user?.FullName ?? "Someone", game.Title),
             NotificationType.JoinRequest
         );
 
@@ -406,12 +406,12 @@ public class GameService : IGameService
         // Host cannot leave their own game
         if (game.HostUserId == userId)
         {
-            throw new ValidationException("Host", "Host cannot leave their own game. Cancel it instead.");
+            throw new ValidationException("Host", MessageStrings.HostCannotLeave);
         }
 
         var participant = game.Participants.FirstOrDefault(p => p.UserId == userId);
         if (participant == null)
-            throw new NotFoundException("You are not a participant in this game.");
+            throw new NotFoundException(MessageStrings.NotAParticipantInGame);
 
         Uow.Repository<GameParticipant>().Remove(participant);
 
@@ -426,8 +426,7 @@ public class GameService : IGameService
         // Notify host
         var user = await UserManager.FindByIdAsync(userId);
         await NotificationService.CreateNotificationAsync(
-            game.HostUserId,
-            $"{user?.FullName ?? "Someone"} left your game '{game.Title}'",
+            game.HostUserId,MessageStrings.UserLeftGame(user?.FullName ?? "Someone", game.Title),
             NotificationType.Info
         );
 
@@ -442,11 +441,11 @@ public class GameService : IGameService
             throw new NotFoundException("Game", gameId);
 
         if (game.HostUserId != userId)
-            throw new UnauthorizedException("Only the host can update the game.");
+            throw new UnauthorizedException(MessageStrings.OnlyHostCanUpdateGame);
 
         if (updateDto.MaxPlayers < updateDto.MinPlayers)
         {
-            throw new ValidationException("MaxPlayers", "Max players must be >= Min players.");
+            throw new ValidationException("MaxPlayers", MessageStrings.MaxPlayersMustBeGreaterOrEqualMinPlayers);
         }
 
         game.Title = updateDto.Title;
@@ -467,8 +466,7 @@ public class GameService : IGameService
         foreach (var p in participants)
         {
             await NotificationService.CreateNotificationAsync(
-                p.UserId,
-                $"Game '{game.Title}' has been updated by the host.",
+                p.UserId,MessageStrings.GameUpdated(game.Title),
                 NotificationType.Info
             );
         }
@@ -487,7 +485,7 @@ public class GameService : IGameService
             throw new NotFoundException("Game", gameId);
 
         if (game.HostUserId != userId)
-            throw new UnauthorizedException("Only the host can cancel the game.");
+            throw new UnauthorizedException(MessageStrings.OnlyHostCanCancelGame);
 
         game.Status = GameStatus.Cancelled;
         await Uow.SaveChangesAsync();
@@ -495,8 +493,7 @@ public class GameService : IGameService
         foreach (var p in game.Participants.Where(p => p.UserId != userId))
         {
             await NotificationService.CreateNotificationAsync(
-                p.UserId,
-                $"Game '{game.Title}' has been cancelled by the host.",
+                p.UserId,MessageStrings.GameCancelled(game.Title),
                 NotificationType.GameCancelled
             );
         }
@@ -527,8 +524,7 @@ public class GameService : IGameService
             foreach (var participant in game.Participants)
             {
                 await NotificationService.CreateNotificationAsync(
-                    participant.UserId,
-                    $"Game '{game.Title}' has been completed! Rate your teammates now.",
+                    participant.UserId,MessageStrings.GameCompletedRate(game.Title),
                     NotificationType.RatingRequest,
                     game.GameId // Pass the game ID
                 );
