@@ -541,7 +541,7 @@ public class GameService : IGameService
     // Helper method to auto-update game statuses
     private async Task UpdateGameStatusesAsync(IEnumerable<Game> games)
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
         bool hasChanges = false;
 
         foreach (var game in games)
